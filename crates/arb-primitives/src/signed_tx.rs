@@ -1091,4 +1091,43 @@ mod tests {
         assert_eq!(signed.nonce(), 0);
         assert_eq!(signed.tx_type(), ArbTxTypeLocal::Deposit);
     }
+
+    #[test]
+    fn submit_retryable_network_length_matches_encoding() {
+        for retry_to in [
+            None,
+            Some(alloy_primitives::address!(
+                "0000000000000000000000000000000000000009"
+            )),
+        ] {
+            let tx = ArbSubmitRetryableTx {
+                chain_id: U256::from(42161u64),
+                request_id: B256::from([0x33; 32]),
+                from: alloy_primitives::address!("0000000000000000000000000000000000000005"),
+                l1_base_fee: U256::from(30u64),
+                deposit_value: U256::from(1000u64),
+                gas_fee_cap: U256::from(100u64),
+                gas: 60000,
+                retry_to,
+                retry_value: U256::from(123u64),
+                beneficiary: alloy_primitives::address!("0000000000000000000000000000000000000006"),
+                max_submission_fee: U256::from(55u64),
+                fee_refund_addr: alloy_primitives::address!(
+                    "0000000000000000000000000000000000000007"
+                ),
+                retry_data: Bytes::from(vec![0xde, 0xad, 0xbe, 0xef]),
+            };
+            let signed = ArbTransactionSigned::new_unhashed(
+                ArbTypedTransaction::SubmitRetryable(tx),
+                ArbTransactionSigned::zero_sig(),
+            );
+            let mut encoded = Vec::new();
+            signed.encode_2718(&mut encoded);
+            assert_eq!(
+                signed.encode_2718_len(),
+                encoded.len(),
+                "block transaction length must match emitted EIP-2718 bytes"
+            );
+        }
+    }
 }

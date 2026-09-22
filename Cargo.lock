@@ -1049,11 +1049,11 @@ dependencies = [
 [[package]]
 name = "arb-alloy-consensus"
 version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d6b781bc9242d4d38df01e1936b0c7af2f6a463200e2401e580727206040351"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
+ "hex",
+ "proptest",
  "thiserror 2.0.18",
 ]
 

@@ -23,6 +23,7 @@ members = [
     "crates/arbos",
     "bin/arb-reth",
     "bin/arb-test",
+    "vendor/arb-alloy-consensus",
 ]
 exclude = ["brotli"]
 resolver = "2"
@@ -249,3 +250,7 @@ inherits = "release"
 lto = false
 codegen-units = 256
 incremental = true
+
+[patch.crates-io]
+# Pin the audited 0.1.2 source while correcting its RLP length accounting.
+arb-alloy-consensus = { path = "vendor/arb-alloy-consensus" }
