@@ -1457,11 +1457,6 @@ where
                 let db = StateDbBackend::from_mut(self.inner.evm_mut().db_mut());
                 let mut arb_state = arbos_from_input_system(db, SystemBurner::new(None, false))
                     .map_err(BlockExecutionError::other)?;
-                // The internal-tx API takes the state backend and transfer/balance
-                // callbacks together. They execute synchronously, so a raw pointer
-                // lets each callback reborrow the same generic StateDB without
-                // requiring the old concrete `State<DB>` storage handle.
-                let db_ptr: *mut StateDbBackend<DB> = db;
                 let ctx = InternalTxContext {
                     block_number,
                     current_time,
@@ -1475,58 +1470,34 @@ where
                     process_parent_block_hash(db, self.arb_ctx.l2_block_number, ctx.prev_hash);
                 }
 
-                let touched_ptr = &mut self.touched_accounts as *mut rustc_hash::FxHashSet<Address>;
-                let zombie_ptr = &mut self.zombie_accounts as *mut rustc_hash::FxHashSet<Address>;
-                let finalise_ptr = &self.finalise_deleted as *const rustc_hash::FxHashSet<Address>;
-                let overlay_ptr = &mut self.state_overlay as *mut StateOverlay;
+                let touched = &mut self.touched_accounts;
+                let zombies = &mut self.zombie_accounts;
+                let finalise = &self.finalise_deleted;
+                let overlay = &mut self.state_overlay;
                 let arbos_ver = self.arb_ctx.arbos_version;
-                let mut do_transfer = move |from: Address, to: Address, amount: U256| {
-                    // SAFETY: callbacks are invoked sequentially by
-                    // `apply_internal_tx_update`; no two DB borrows overlap.
-                    unsafe {
-                        let state = &mut *db_ptr;
-                        if amount.is_zero()
-                            && arbos_ver < arb_chainspec::arbos_version::ARBOS_VERSION_STYLUS
-                        {
-                            create_zombie_if_deleted(
-                                state,
-                                &mut *overlay_ptr,
-                                from,
-                                &*finalise_ptr,
-                                &mut *zombie_ptr,
-                                &mut *touched_ptr,
-                            );
-                        }
-                        // Internal-tx transfers move funds between system accounts
-                        // (L1 pricer pool, fee accounts, retryable escrow). Their
-                        // bookkeeping keeps the source funded by construction; a
-                        // shortfall here would indicate consensus-state drift and
-                        // must not abort the internal tx — match the historic
-                        // best-effort behavior by swallowing the typed error.
-                        let _ = apply_balance_op(
-                            state,
-                            &mut *overlay_ptr,
-                            Some(&from),
-                            Some(&to),
-                            amount,
-                        );
-                        if !amount.is_zero() {
-                            (*zombie_ptr).remove(&from);
-                        }
-                        (*zombie_ptr).remove(&to);
-                        (*touched_ptr).insert(from);
-                        (*touched_ptr).insert(to);
+                let mut do_transfer = |state: &mut StateDbBackend<DB>,
+                                       from: Address,
+                                       to: Address,
+                                       amount: U256| {
+                    if amount.is_zero()
+                        && arbos_ver < arb_chainspec::arbos_version::ARBOS_VERSION_STYLUS
+                    {
+                        create_zombie_if_deleted(state, overlay, from, finalise, zombies, touched);
                     }
+                    // System-account shortfalls must retain the historic best-effort bookkeeping.
+                    let _ = apply_balance_op(state, overlay, Some(&from), Some(&to), amount);
+                    if !amount.is_zero() {
+                        zombies.remove(&from);
+                    }
+                    zombies.remove(&to);
+                    touched.insert(from);
+                    touched.insert(to);
                     Ok(())
                 };
-                let mut do_balance = move |addr: Address| -> U256 {
-                    // SAFETY: callbacks are synchronous and non-overlapping.
-                    unsafe { get_balance(&mut *db_ptr, addr) }
-                };
-                // SAFETY: the callback reborrows occur only while this outer
-                // borrow is suspended inside the synchronous callback calls.
+                let mut do_balance =
+                    |state: &mut StateDbBackend<DB>, addr: Address| get_balance(state, addr);
                 if let Err(e) = internal_tx::apply_internal_tx_update(
-                    unsafe { &mut *db_ptr },
+                    db,
                     &tx_data,
                     &mut arb_state,
                     &ctx,
@@ -2170,7 +2141,8 @@ where
         // redirect coinbase tip to network when CollectTips() is true.
         let effective_tip_per_gas: u128 = {
             let bf: u128 = self.arb_ctx.basefee.try_into().unwrap_or(u128::MAX);
-            let max_fee: u128 = upfront_gas_price; // gas_price() returns max_fee_per_gas for EIP-1559
+            let max_fee: u128 = upfront_gas_price; // gas_price() returns max_fee_per_gas for
+                                                   // EIP-1559
             let max_minus_bf = max_fee.saturating_sub(bf);
             match revm::context_interface::Transaction::max_priority_fee_per_gas(&tx_env) {
                 Some(max_priority) => max_priority.min(max_minus_bf),
@@ -2951,10 +2923,9 @@ where
                             let _ = arb_state_retry.retryable_state.delete_retryable(
                                 state_ref,
                                 retry_ctx.ticket_id,
-                                |from, to, amount| {
+                                |state, from, to, amount| {
                                     // SAFETY: ArbOS invokes these callbacks synchronously.
                                     unsafe {
-                                        let state = &mut *db_ptr;
                                         if amount.is_zero()
                                             && arbos_ver
                                                 < arb_chainspec::arbos_version::ARBOS_VERSION_STYLUS
@@ -2990,7 +2961,7 @@ where
                                     }
                                     Ok(())
                                 },
-                                |addr| unsafe { get_balance(&mut *db_ptr, addr) },
+                                |state, addr| get_balance(state, addr),
                             );
                         } else if result.should_return_value_to_escrow {
                             // Failed retry: return call value to escrow.
@@ -3090,8 +3061,7 @@ where
                             let arb_state_post =
                                 arbos_from_input_system(db, SystemBurner::new(None, false))
                                     .map_err(BlockExecutionError::other)?;
-                            let db_ptr: *mut StateDbBackend<DB> = db;
-                            let overlay_ptr = &mut self.state_overlay as *mut StateOverlay;
+                            let overlay = &mut self.state_overlay;
 
                             let mut refund_done = false;
                             let should_compute_multi_gas_refund = {
@@ -3106,12 +3076,9 @@ where
                                 let total_cost =
                                     basefee_active.saturating_mul(U256::from(gas_used_total));
                                 let cached = self.multi_gas_current_fees.get_or_init(|| {
-                                    // SAFETY: the OnceLock initializer runs
-                                    // synchronously while `db` remains alive.
-                                    let state_ref = unsafe { &mut *db_ptr };
                                     arb_state_post
                                         .l2_pricing_state
-                                        .get_current_multi_gas_fees(state_ref)
+                                        .get_current_multi_gas_fees(db)
                                         .unwrap_or([U256::ZERO; NUM_RESOURCE_KIND])
                                 });
                                 // SAFETY: see `Storage::state_mut()` invariant.
@@ -3131,15 +3098,7 @@ where
                                         Some(&dist.network_fee_account),
                                         Some(&pending.sender),
                                         refund_amount,
-                                        |f, t, a| unsafe {
-                                            apply_balance_op(
-                                                &mut *db_ptr,
-                                                &mut *overlay_ptr,
-                                                f,
-                                                t,
-                                                a,
-                                            )
-                                        },
+                                        |f, t, a| apply_balance_op(db, overlay, f, t, a),
                                     );
                                     refund_done = true;
                                 }

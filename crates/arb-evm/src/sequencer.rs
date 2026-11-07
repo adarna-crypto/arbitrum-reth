@@ -9,7 +9,7 @@
 
 use std::{fmt::Display, sync::LazyLock, time::Duration};
 
-use alloy_consensus::{transaction::Recovered, Header};
+use alloy_consensus::{crypto::RecoveryError, transaction::Recovered, Header};
 use alloy_eips::eip2718::Decodable2718;
 use alloy_evm::{
     block::{BlockExecutor, BlockExecutorFactory},
@@ -142,8 +142,17 @@ pub struct SequencerTransactionExecution {
     pub state: reth_revm::state::EvmState,
 }
 
-type PreparedSequencerTransaction =
-    Option<Result<(ArbTransactionSigned, Recovered<ArbTransactionSigned>), String>>;
+#[derive(Debug, thiserror::Error)]
+enum SequencerPreparationError {
+    #[error("parsed transaction has no signed envelope")]
+    MissingSignedEnvelope,
+    #[error("sender recovery: {0:?}")]
+    SenderRecovery(#[from] RecoveryError),
+}
+
+type PreparedSequencerTransaction = Option<
+    Result<(ArbTransactionSigned, Recovered<ArbTransactionSigned>), SequencerPreparationError>,
+>;
 
 const RECOVERY_CHUNK_SIZE: usize = 8;
 
@@ -187,14 +196,14 @@ fn prepare_sequencer_chunk(
         }
         let signed = match parsed_tx_to_signed(parsed, chain_id) {
             Some(signed) => signed,
-            None => return Some(Err("parsed transaction has no signed envelope".into())),
+            None => return Some(Err(SequencerPreparationError::MissingSignedEnvelope)),
         };
         Some(
             signed
                 .clone()
                 .try_into_recovered()
                 .map(|recovered| (signed, recovered))
-                .map_err(|error| format!("sender recovery: {error:?}")),
+                .map_err(SequencerPreparationError::SenderRecovery),
         )
     };
 
@@ -458,7 +467,7 @@ where
                     return Err(transaction_failure(
                         parsed_index,
                         SequencerTransactionFailureStage::Preparation,
-                        reason,
+                        reason.to_string(),
                     ));
                 }
                 None => {

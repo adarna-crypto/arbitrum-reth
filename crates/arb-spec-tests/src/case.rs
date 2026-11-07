@@ -220,13 +220,13 @@ fn apply_action(
             rs.delete_retryable(
                 unsafe { &mut *state_ptr },
                 *id,
-                |from, to, amount| {
+                |_backend, from, to, amount| {
                     transfers
                         .borrow_mut()
                         .push(TransferEntry { from, to, amount });
                     Ok(())
                 },
-                |addr| if addr == escrow { bal } else { U256::ZERO },
+                |_backend, addr| if addr == escrow { bal } else { U256::ZERO },
             )
             .map_err(|_| SpecError::Action("delete_retryable".into()))?;
         }

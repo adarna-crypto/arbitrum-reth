@@ -513,7 +513,7 @@ impl<D> L1PricingState<'_, D> {
         mut transfer_fn: F,
     ) -> Result<(), L1PricingError>
     where
-        F: FnMut(Address, Address, U256) -> Result<(), BalanceError>,
+        F: FnMut(&mut B, Address, Address, U256) -> Result<(), BalanceError>,
         B: StorageBackend,
     {
         if self.arbos_version < 10 {
@@ -595,6 +595,7 @@ impl<D> L1PricingState<'_, D> {
             // the L1 pricer pool balance. A typed shortfall here would indicate
             // pool/state drift and must not block the rest of the bookkeeping.
             let _ = transfer_fn(
+                backend,
                 L1_PRICER_FUNDS_POOL_ADDRESS,
                 pay_rewards_to,
                 payment_for_rewards,
@@ -613,7 +614,12 @@ impl<D> L1PricingState<'_, D> {
             // transfer_amount is capped to the remaining pool balance above; a
             // shortfall here would be a pool/state inconsistency rather than a
             // user-driven error, so do not surface it as Err.
-            let _ = transfer_fn(L1_PRICER_FUNDS_POOL_ADDRESS, addr_to_pay, transfer_amount);
+            let _ = transfer_fn(
+                backend,
+                L1_PRICER_FUNDS_POOL_ADDRESS,
+                addr_to_pay,
+                transfer_amount,
+            );
             l1_fees = l1_fees.saturating_sub(transfer_amount);
             self.set_l1_fees_available(backend, l1_fees)?;
             let _ = poster_state.set_funds_due(
