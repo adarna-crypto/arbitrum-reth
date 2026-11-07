@@ -296,18 +296,20 @@ mod tests {
     ) -> Arc<BlockState<ArbPrimitives>> {
         let number = parent.as_ref().map_or(1, |parent| parent.number() + 1);
         let parent_hash = parent.as_ref().map_or(B256::ZERO, |parent| parent.hash());
-        let mut block = ExecutedBlock::<ArbPrimitives>::default();
-        block.recovered_block = Arc::new(RecoveredBlock::new_unhashed(
-            Block {
-                header: Header {
-                    number,
-                    parent_hash,
-                    ..Default::default()
+        let mut block = ExecutedBlock::<ArbPrimitives> {
+            recovered_block: Arc::new(RecoveredBlock::new_unhashed(
+                Block {
+                    header: Header {
+                        number,
+                        parent_hash,
+                        ..Default::default()
+                    },
+                    body: Default::default(),
                 },
-                body: Default::default(),
-            },
-            vec![],
-        ));
+                vec![],
+            )),
+            ..Default::default()
+        };
         Arc::make_mut(&mut block.execution_output).state = bundle;
         Arc::new(BlockState::with_parent(block, parent))
     }
