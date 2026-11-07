@@ -19,9 +19,9 @@ use arb_primitives::{
     signed_tx::ArbTransactionExt,
     tx_types::ArbTxType,
 };
-use arb_storage::{Detached, StateDbBackend};
+use arb_storage::{AccountStateBackend, Detached, StateDbBackend, FILTERED_TX_STATE_ADDRESS};
 use arbos::{
-    arbos_state::{arbos_from_input_system, ArbosState},
+    arbos_state::{arbos_from_input_system, ArbosState, ArbosStateError},
     burn::SystemBurner,
     internal_tx::{self, InternalTxContext},
     l1_pricing, retryables,
@@ -48,6 +48,18 @@ use crate::{
     hooks::{ArbOsHooks, EndTxContext},
     state_overlay::StateOverlay,
 };
+
+fn open_executor_arbos<B: AccountStateBackend>(
+    db: &mut B,
+) -> Result<ArbosState<'static, Detached, SystemBurner>, ArbosStateError> {
+    let state = arbos_from_input_system(db, SystemBurner::new(None, false))?;
+    // Nitro opens this storage with nonce one so EIP-161 cannot delete its account.
+    if state.arbos_version() >= arb_chainspec::arbos_version::ARBOS_VERSION_TRANSACTION_FILTERING {
+        db.set_account_nonce(FILTERED_TX_STATE_ADDRESS, 1)
+            .map_err(|error| ArbosStateError::Storage(error.into()))?;
+    }
+    Ok(state)
+}
 
 /// Extension trait for transaction environments that support gas price mutation.
 ///
@@ -682,7 +694,7 @@ where
             .map(|h| h.collect_tips_enabled)
             .unwrap_or(false);
         let db = StateDbBackend::from_mut(self.inner.evm_mut().db_mut());
-        if let Ok(arb_state) = arbos_from_input_system(db, SystemBurner::new(None, false)) {
+        if let Ok(arb_state) = open_executor_arbos(db) {
             // SAFETY: see `Storage::state_mut()` invariant.
             let state_ref = &mut *db;
             if let Ok(net) = arb_state.network_fee_account(state_ref) {
@@ -736,8 +748,7 @@ where
         // auto-redeem scheduling is skipped.
         let is_filtered = {
             let db = StateDbBackend::from_mut(self.inner.evm_mut().db_mut());
-            let arb_state = arbos_from_input_system(db, SystemBurner::new(None, false))
-                .map_err(BlockExecutionError::other)?;
+            let arb_state = open_executor_arbos(db).map_err(BlockExecutionError::other)?;
             if arb_state
                 .filtered_transactions
                 .is_filtered(db, ticket_id)
@@ -945,8 +956,7 @@ where
         }
 
         // 6. Create retryable ticket.
-        let arb_state = arbos_from_input_system(db, SystemBurner::new(None, false))
-            .map_err(BlockExecutionError::other)?;
+        let arb_state = open_executor_arbos(db).map_err(BlockExecutionError::other)?;
         // SAFETY: see `Storage::state_mut()` invariant.
         let state_ref = &mut *db;
         let _ = arb_state.retryable_state.create_retryable(
@@ -1012,8 +1022,7 @@ where
             if !is_filtered {
                 // Schedule auto-redeem: reconstruct the retry tx from stored
                 // fields and bump num_tries.
-                let arb_state = arbos_from_input_system(db, SystemBurner::new(None, false))
-                    .map_err(BlockExecutionError::other)?;
+                let arb_state = open_executor_arbos(db).map_err(BlockExecutionError::other)?;
                 // SAFETY: see `Storage::state_mut()` invariant.
                 let state_ref = &mut *db;
                 match arb_state
@@ -1229,8 +1238,7 @@ where
         }
 
         let db = StateDbBackend::from_mut(self.inner.evm_mut().db_mut());
-        let arb_state = arbos_from_input_system(db, SystemBurner::new(None, false))
-            .map_err(BlockExecutionError::other)?;
+        let arb_state = open_executor_arbos(db).map_err(BlockExecutionError::other)?;
         // SAFETY: see `Storage::state_mut()` invariant. The returned reference
         // inherits the storage handle's lifetime, decoupled from `&arb_state`.
         let state_ref = &mut *db;
@@ -1455,8 +1463,7 @@ where
                     )
                 };
                 let db = StateDbBackend::from_mut(self.inner.evm_mut().db_mut());
-                let mut arb_state = arbos_from_input_system(db, SystemBurner::new(None, false))
-                    .map_err(BlockExecutionError::other)?;
+                let mut arb_state = open_executor_arbos(db).map_err(BlockExecutionError::other)?;
                 let ctx = InternalTxContext {
                     block_number,
                     current_time,
@@ -1596,8 +1603,7 @@ where
             let mut is_filtered = false;
             {
                 let db = StateDbBackend::from_mut(self.inner.evm_mut().db_mut());
-                let arb_state = arbos_from_input_system(db, SystemBurner::new(None, false))
-                    .map_err(BlockExecutionError::other)?;
+                let arb_state = open_executor_arbos(db).map_err(BlockExecutionError::other)?;
                 if arb_state
                     .filtered_transactions
                     .is_filtered(db, tx_hash)
@@ -1697,8 +1703,7 @@ where
                 // Open the retryable ticket. Scoped so `arb_state`'s borrow of
                 // `db` is released before the balance-op closures below reborrow it.
                 let retryable = {
-                    let arb_state = arbos_from_input_system(db, SystemBurner::new(None, false))
-                        .map_err(BlockExecutionError::other)?;
+                    let arb_state = open_executor_arbos(db).map_err(BlockExecutionError::other)?;
                     // SAFETY: see `Storage::state_mut()` invariant.
                     let state_ref = &mut *db;
                     arb_state
@@ -1961,8 +1966,7 @@ where
         let tx_hash_for_filter = recovered.tx().trie_hash();
         let is_filtered = {
             let db = StateDbBackend::from_mut(self.inner.evm_mut().db_mut());
-            let arb_state = arbos_from_input_system(db, SystemBurner::new(None, false))
-                .map_err(BlockExecutionError::other)?;
+            let arb_state = open_executor_arbos(db).map_err(BlockExecutionError::other)?;
             if calldata_units > 0 && !self.simulation_disable_fee_charging {
                 // SAFETY: see `Storage::state_mut()` invariant.
                 let state_ref = &mut *db;
@@ -2200,8 +2204,7 @@ where
                 let overlay = &mut this.state_overlay;
                 let db = StateDbBackend::from_mut(this.inner.evm_mut().db_mut());
                 if units > 0 && !this.simulation_disable_fee_charging {
-                    let arb_state = arbos_from_input_system(db, SystemBurner::new(None, false))
-                        .map_err(BlockExecutionError::other)?;
+                    let arb_state = open_executor_arbos(db).map_err(BlockExecutionError::other)?;
                     // SAFETY: see `Storage::state_mut()` invariant.
                     let state_ref = &mut *db;
                     let _ = arb_state
@@ -2404,8 +2407,7 @@ where
                     let chain_id = self.arb_ctx.chain_id;
                     let basefee = self.arb_ctx.basefee;
                     let db = StateDbBackend::from_mut(self.inner.evm_mut().db_mut());
-                    let arb_state = arbos_from_input_system(db, SystemBurner::new(None, false))
-                        .map_err(BlockExecutionError::other)?;
+                    let arb_state = open_executor_arbos(db).map_err(BlockExecutionError::other)?;
                     // SAFETY: see `Storage::state_mut()` invariant.
                     let state_ref = &mut *db;
 
@@ -2802,8 +2804,7 @@ where
                     let arbos_ver = self.arb_ctx.arbos_version;
 
                     let arb_state_retry =
-                        arbos_from_input_system(db, SystemBurner::new(None, false))
-                            .map_err(BlockExecutionError::other)?;
+                        open_executor_arbos(db).map_err(BlockExecutionError::other)?;
                     let db_ptr: *mut StateDbBackend<DB> = db;
 
                     // ArbOS 60 evaluated multi-gas refunds unconditionally. At
@@ -3059,8 +3060,7 @@ where
                         let (refund_done, new_backlog) = {
                             let db = StateDbBackend::from_mut(self.inner.evm_mut().db_mut());
                             let arb_state_post =
-                                arbos_from_input_system(db, SystemBurner::new(None, false))
-                                    .map_err(BlockExecutionError::other)?;
+                                open_executor_arbos(db).map_err(BlockExecutionError::other)?;
                             let overlay = &mut self.state_overlay;
 
                             let mut refund_done = false;
