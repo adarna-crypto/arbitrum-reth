@@ -598,23 +598,27 @@ where
         let provisional_mix_hash =
             compute_mix_hash(send_count, block_l1_block_number, arbos_version);
 
-        // Open state at parent block via block hash.
-        let raw_state_provider = self
-            .provider
-            .state_by_block_hash(parent_header.hash())
-            .map_err(|e| BlockProducerError::StateAccess(e.to_string()))?;
-
         let state_provider: StateProviderBox =
             if let Some(head_state) = self.in_memory_state.state_by_hash(parent_header.hash()) {
+                let historical = self
+                    .provider
+                    .history_by_block_hash(head_state.anchor().hash)
+                    .map_err(|e| BlockProducerError::StateAccess(e.to_string()))?;
                 let overlay = self.get_or_build_overlay(parent_header.hash(), &head_state);
                 if overlay.is_empty() {
-                    raw_state_provider
+                    head_state.state_provider(historical).boxed()
                 } else {
-                    crate::coalesced_state::CoalescedStateProvider::new(raw_state_provider, overlay)
-                        .boxed()
+                    crate::coalesced_state::CoalescedStateProvider::new(
+                        historical,
+                        &head_state,
+                        overlay,
+                    )
+                    .boxed()
                 }
             } else {
-                raw_state_provider
+                self.provider
+                    .state_by_block_hash(parent_header.hash())
+                    .map_err(|e| BlockProducerError::StateAccess(e.to_string()))?
             };
 
         // Read the L2 baseFee from the parent's committed state.
