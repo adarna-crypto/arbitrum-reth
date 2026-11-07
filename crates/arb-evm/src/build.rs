@@ -2961,7 +2961,7 @@ where
                                     }
                                     Ok(())
                                 },
-                                |state, addr| get_balance(state, addr),
+                                get_balance,
                             );
                         } else if result.should_return_value_to_escrow {
                             // Failed retry: return call value to escrow.
