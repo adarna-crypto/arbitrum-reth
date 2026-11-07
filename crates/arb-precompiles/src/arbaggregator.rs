@@ -147,7 +147,7 @@ fn handle_get_fee_collector(
         Ok(state) => state,
         Err(_) => {
             crate::charge_storage_read(gas_used, ctx, SLOAD_GAS);
-            return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+            return Err(ArbPrecompileError::empty_revert(*gas_used));
         }
     };
     let pay_to = poster_state
@@ -186,7 +186,7 @@ fn handle_set_fee_collector(
         Ok(state) => state,
         Err(_) => {
             crate::charge_storage_read(gas_used, ctx, SLOAD_GAS);
-            return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+            return Err(ArbPrecompileError::empty_revert(*gas_used));
         }
     };
     let old_collector = poster_state
@@ -201,7 +201,7 @@ fn handle_set_fee_collector(
             .map_err(ArbPrecompileError::fatal)?;
         crate::charge_storage_read(gas_used, ctx, SLOAD_GAS);
         if !is_owner {
-            return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+            return Err(ArbPrecompileError::empty_revert(*gas_used));
         }
     }
 
@@ -275,7 +275,7 @@ fn handle_add_batch_poster(
         .map_err(ArbPrecompileError::fatal)?;
     crate::charge_storage_read(gas_used, ctx, SLOAD_GAS);
     if !is_owner {
-        return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+        return Err(ArbPrecompileError::empty_revert(*gas_used));
     }
 
     let bpt = arb_state.l1_pricing_state.batch_poster_table();

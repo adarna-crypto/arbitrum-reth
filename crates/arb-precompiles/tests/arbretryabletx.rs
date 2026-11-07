@@ -46,7 +46,7 @@ fn submit_retryable_always_reverts_with_not_callable() {
         .arbos_state()
         .call(arbretryabletx, &data.into());
     let out = run.assert_ok();
-    assert!(out.reverted, "SubmitRetryable must revert");
+    assert!(out.is_revert(), "SubmitRetryable must revert");
     let not_callable = alloy_primitives::keccak256(b"NotCallable()");
     assert_eq!(&out.bytes[..4], &not_callable[..4]);
 }
@@ -83,7 +83,7 @@ fn get_timeout_unknown_ticket_reverts_with_no_ticket() {
             &calldata("getTimeout(bytes32)", &[B256::from(ticket_id)]),
         );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     let no_ticket = alloy_primitives::keccak256(b"NoTicketWithID()");
     assert_eq!(&out.bytes[..4], &no_ticket[..4]);
 }
@@ -153,7 +153,7 @@ fn get_beneficiary_unknown_ticket_reverts() {
             &calldata("getBeneficiary(bytes32)", &[ticket_id]),
         );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     let no_ticket = alloy_primitives::keccak256(b"NoTicketWithID()");
     assert_eq!(&out.bytes[..4], &no_ticket[..4]);
 }
@@ -193,7 +193,7 @@ fn cancel_unknown_ticket_reverts() {
         .arbos_state()
         .call(arbretryabletx, &calldata("cancel(bytes32)", &[ticket_id]));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
 }
 
 #[test]
@@ -219,7 +219,7 @@ fn cancel_rejects_non_beneficiary_caller() {
             U256::from_be_slice(beneficiary.as_slice()),
         )
         .call(arbretryabletx, &calldata("cancel(bytes32)", &[ticket_id]));
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }
 
 #[test]
@@ -235,7 +235,7 @@ fn redeem_self_modifying_guard_rejects_current_retryable() {
             &calldata("redeem(bytes32)", &[ticket_id]),
             ctx,
         );
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }
 
 #[test]
@@ -246,7 +246,7 @@ fn redeem_unknown_ticket_reverts_with_no_ticket() {
         .arbos_state()
         .call(arbretryabletx, &calldata("redeem(bytes32)", &[ticket_id]));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     let no_ticket = alloy_primitives::keccak256(b"NoTicketWithID()");
     assert_eq!(&out.bytes[..4], &no_ticket[..4]);
 }
@@ -272,7 +272,7 @@ fn get_timeout_reverts_for_expired_ticket() {
             &calldata("getTimeout(bytes32)", &[ticket_id]),
         );
     let out = run.assert_ok();
-    assert!(out.reverted, "expired ticket must revert");
+    assert!(out.is_revert(), "expired ticket must revert");
     let no_ticket = alloy_primitives::keccak256(b"NoTicketWithID()");
     assert_eq!(&out.bytes[..4], &no_ticket[..4]);
 }
@@ -384,7 +384,7 @@ fn submit_retryable_charges_init_plus_one_word_revert_payload() {
         .arbos_state()
         .call(arbretryabletx, &data.into());
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     // init(800 + 12 arg words * 3) + 1-word NotCallable error payload = 836 + 3 = 839.
     assert_eq!(out.gas_used, SLOAD_GAS + 12 * COPY_GAS + COPY_GAS);
 }
@@ -427,7 +427,7 @@ fn get_timeout_unknown_ticket_charges_init_plus_timeout_sload_plus_one_word_reve
             &calldata("getTimeout(bytes32)", &[ticket_id]),
         );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     // init(803) + 1 timeout sload(800) + 1-word NoTicketWithID payload(3) = 1606.
     assert_eq!(out.gas_used, 2 * SLOAD_GAS + 2 * COPY_GAS);
 }
@@ -470,7 +470,7 @@ fn get_beneficiary_unknown_ticket_charges_init_plus_open_sload_plus_revert_paylo
             &calldata("getBeneficiary(bytes32)", &[ticket_id]),
         );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     // init(803) + open_retryable sload(800) + 1-word NoTicketWithID(3) = 1606.
     assert_eq!(out.gas_used, 2 * SLOAD_GAS + 2 * COPY_GAS);
 }
@@ -483,7 +483,7 @@ fn cancel_unknown_ticket_charges_init_plus_open_sload_plus_revert_payload() {
         .arbos_state()
         .call(arbretryabletx, &calldata("cancel(bytes32)", &[ticket_id]));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 2 * SLOAD_GAS + 2 * COPY_GAS);
 }
 
@@ -511,7 +511,7 @@ fn cancel_non_beneficiary_caller_reverts_with_accumulated_gas() {
         )
         .call(arbretryabletx, &calldata("cancel(bytes32)", &[ticket_id]));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     // init(803) + open_retryable sload(800) + beneficiary sload(800) = 2403.
     assert_eq!(out.gas_used, 3 * SLOAD_GAS + COPY_GAS);
 }
@@ -559,7 +559,7 @@ fn keepalive_unknown_ticket_charges_init_plus_open_sload_plus_revert_payload() {
             &calldata("keepalive(bytes32)", &[ticket_id]),
         );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 2 * SLOAD_GAS + 2 * COPY_GAS);
 }
 
@@ -609,7 +609,7 @@ fn redeem_unknown_ticket_charges_two_open_sloads_plus_revert_payload() {
         .arbos_state()
         .call(arbretryabletx, &calldata("redeem(bytes32)", &[ticket_id]));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     // init(803) + handler timeout sload(800) + open_retryable timeout sload(800)
     // + 1-word NoTicketWithID(3) = 2406.
     assert_eq!(out.gas_used, 3 * SLOAD_GAS + 2 * COPY_GAS);
@@ -629,6 +629,6 @@ fn redeem_self_modifying_guard_only_charges_init() {
             ctx,
         );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, SLOAD_GAS + COPY_GAS);
 }

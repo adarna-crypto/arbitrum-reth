@@ -142,8 +142,17 @@ pub struct SequencerTransactionExecution {
     pub state: reth_revm::state::EvmState,
 }
 
-type PreparedSequencerTransaction =
-    Option<Result<(ArbTransactionSigned, Recovered<ArbTransactionSigned>), String>>;
+#[derive(Debug, thiserror::Error)]
+enum SequencerPreparationError {
+    #[error("parsed transaction has no signed envelope")]
+    MissingSignedEnvelope,
+    #[error("sender recovery: {0:?}")]
+    SenderRecovery(Box<ArbTransactionSigned>),
+}
+
+type PreparedSequencerTransaction = Option<
+    Result<(ArbTransactionSigned, Recovered<ArbTransactionSigned>), SequencerPreparationError>,
+>;
 
 const RECOVERY_CHUNK_SIZE: usize = 8;
 
@@ -187,14 +196,16 @@ fn prepare_sequencer_chunk(
         }
         let signed = match parsed_tx_to_signed(parsed, chain_id) {
             Some(signed) => signed,
-            None => return Some(Err("parsed transaction has no signed envelope".into())),
+            None => return Some(Err(SequencerPreparationError::MissingSignedEnvelope)),
         };
         Some(
             signed
                 .clone()
                 .try_into_recovered()
                 .map(|recovered| (signed, recovered))
-                .map_err(|error| format!("sender recovery: {error:?}")),
+                .map_err(|transaction| {
+                    SequencerPreparationError::SenderRecovery(Box::new(transaction))
+                }),
         )
     };
 
@@ -458,7 +469,7 @@ where
                     return Err(transaction_failure(
                         parsed_index,
                         SequencerTransactionFailureStage::Preparation,
-                        reason,
+                        reason.to_string(),
                     ));
                 }
                 None => {
@@ -867,6 +878,36 @@ mod tests {
     use arbos::{arbos_state::initialize::bootstrap, burn::SystemBurner};
     use reth_revm::state::AccountInfo;
     use std::sync::Arc;
+
+    #[test]
+    fn prepare_sequencer_chunk_preserves_recovery_failure_diagnostics() {
+        let signed = ArbTransactionSigned::from_envelope(EthereumTxEnvelope::Eip1559(
+            TxEip1559::default().into_signed(alloy_primitives::Signature::new(
+                U256::ZERO,
+                U256::ZERO,
+                false,
+            )),
+        ));
+        let encoded = signed.encoded_2718();
+        let decoded = ArbTransactionSigned::decode_2718(&mut encoded.as_slice()).unwrap();
+        let rejected = decoded.try_into_recovered().unwrap_err();
+        let expected = format!("sender recovery: {rejected:?}");
+        for count in [1, 4] {
+            let parsed = (0..count)
+                .map(|_| ParsedTransaction::Signed(encoded.clone()))
+                .collect::<Vec<_>>();
+            let prepared = prepare_sequencer_chunk(&parsed, 4663);
+            assert_eq!(prepared.len(), count);
+            for result in prepared {
+                let error = result.expect("signed transaction is prepared").unwrap_err();
+                assert!(matches!(
+                    error,
+                    SequencerPreparationError::SenderRecovery(_)
+                ));
+                assert_eq!(error.to_string(), expected);
+            }
+        }
+    }
 
     #[test]
     fn rejects_a_non_contiguous_sequence_before_touching_the_database() {

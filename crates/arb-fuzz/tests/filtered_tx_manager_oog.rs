@@ -43,7 +43,8 @@ const ARBFILTEREDTX: Address = address!("000000000000000000000000000000000000007
 const FUNDER: Address = Address::new([0xa1; 20]);
 
 // add = argsCost(3) + OpenArbosState(800) + IsMember(800) + SSTORE(20_000) + log(1125) = 22_728.
-const ADD_WINDOW_GAS: u16 = 22_000; // in (21_928, 22_727]: below the 22_728 add threshold -> reverts.
+const ADD_WINDOW_GAS: u16 = 22_000; // in (21_928, 22_727]: below the 22_728 add threshold ->
+                                    // reverts.
 const ADD_BOUNDARY_BELOW: u16 = 22_727; // last in-window value: locks the OpenArbosState +800.
 const ADD_BOUNDARY_AT: u16 = 22_728; // exact threshold: both succeed.
 const AMPLE_INNER_GAS: u16 = 50_000;

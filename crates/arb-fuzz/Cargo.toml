@@ -17,7 +17,7 @@ arb-primitives = { workspace = true }
 arb-test-harness = { workspace = true }
 arb-alloy-consensus = "0.1.2"
 alloy-primitives = { workspace = true, features = ["arbitrary"] }
-alloy-eips = "1.7"
+alloy-eips = { workspace = true }
 
 arbitrary = { version = "1", features = ["derive"] }
 proptest = { version = "1", default-features = false, features = ["std"] }

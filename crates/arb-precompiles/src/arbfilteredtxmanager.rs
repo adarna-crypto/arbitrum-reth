@@ -173,7 +173,7 @@ fn handle_is_tx_filtered(
     let gas_limit = input.gas;
     // A view method rejects call value and DELEGATECALL.
     if !input.value.is_zero() || input.target_address != input.bytecode_address {
-        return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+        return Err(ArbPrecompileError::empty_revert(*gas_used));
     }
     load_accounts(input)?;
 
@@ -211,12 +211,12 @@ fn handle_add_filtered_tx(
     let caller = input.caller;
     // Value, read-only and delegate context revert via the wrapper's gas.
     if !input.value.is_zero() || input.is_static || input.target_address != input.bytecode_address {
-        return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+        return Err(ArbPrecompileError::empty_revert(*gas_used));
     }
     load_accounts(input)?;
 
     if !is_transaction_filterer(input, gas_used, caller, ctx)? {
-        return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+        return Err(ArbPrecompileError::empty_revert(*gas_used));
     }
 
     {
@@ -258,12 +258,12 @@ fn handle_delete_filtered_tx(
     let caller = input.caller;
     // Value, read-only and delegate context revert via the wrapper's gas.
     if !input.value.is_zero() || input.is_static || input.target_address != input.bytecode_address {
-        return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+        return Err(ArbPrecompileError::empty_revert(*gas_used));
     }
     load_accounts(input)?;
 
     if !is_transaction_filterer(input, gas_used, caller, ctx)? {
-        return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+        return Err(ArbPrecompileError::empty_revert(*gas_used));
     }
 
     {

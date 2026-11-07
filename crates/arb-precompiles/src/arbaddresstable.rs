@@ -145,7 +145,7 @@ fn handle_lookup(
         .map_err(ArbPrecompileError::fatal)?;
     if !exists {
         crate::charge_storage_read(gas_used, ctx, SLOAD_GAS);
-        return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+        return Err(ArbPrecompileError::empty_revert(*gas_used));
     }
 
     crate::charge_storage_read(gas_used, ctx, SLOAD_GAS);
@@ -180,7 +180,7 @@ fn handle_lookup_index(
         Some(a) => a,
         None => {
             crate::charge_storage_read(gas_used, ctx, SLOAD_GAS);
-            return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+            return Err(ArbPrecompileError::empty_revert(*gas_used));
         }
     };
 
@@ -280,7 +280,7 @@ fn handle_decompress(
         .map_err(|_| ArbPrecompileError::empty_revert(*gas_used))?;
 
     if ioffset >= buf.len() {
-        return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+        return Err(ArbPrecompileError::empty_revert(*gas_used));
     }
     let slice = &buf[ioffset..];
 
@@ -294,13 +294,13 @@ fn handle_decompress(
     let (addr, bytes_read, raw_address) = match arb_state.address_table.decompress(internals, slice)
     {
         Ok(v) => v,
-        Err(AddressTableError::Storage(s)) => return Err(ArbPrecompileError::fatal(s).into()),
+        Err(AddressTableError::Storage(s)) => return Err(ArbPrecompileError::fatal(s)),
         Err(AddressTableError::IndexOutOfRange(_)) => {
             crate::charge_storage_read(gas_used, ctx, SLOAD_GAS);
-            return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+            return Err(ArbPrecompileError::empty_revert(*gas_used));
         }
         Err(AddressTableError::InvalidEncoding) => {
-            return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+            return Err(ArbPrecompileError::empty_revert(*gas_used));
         }
     };
 

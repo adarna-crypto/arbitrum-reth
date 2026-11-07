@@ -155,7 +155,7 @@ fn get_l1_fees_available_gated_to_v10() {
     let run = put_l1(fixture(9).gas(50_000), L1_FEES_AVAILABLE, val)
         .call(arbgasinfo, &calldata("getL1FeesAvailable()", &[]));
     let out = run.assert_ok();
-    assert!(out.reverted, "below ArbosVersion_10 must revert");
+    assert!(out.is_revert(), "below ArbosVersion_10 must revert");
     assert_eq!(out.gas_used, 50_000);
 }
 
@@ -171,7 +171,7 @@ fn get_l1_fees_available_returns_field_at_v10() {
 fn get_l1_reward_rate_gated_to_v11() {
     let run = put_l1(fixture(10).gas(50_000), L1_PER_UNIT_REWARD, U256::from(7))
         .call(arbgasinfo, &calldata("getL1RewardRate()", &[]));
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }
 
 #[test]
@@ -202,7 +202,7 @@ fn get_l1_pricing_equilibration_units_gated_to_v20() {
         arbgasinfo,
         &calldata("getL1PricingEquilibrationUnits()", &[]),
     );
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }
 
 #[test]
@@ -257,7 +257,7 @@ fn get_max_block_gas_limit_gated_to_v50() {
         U256::from(32_000_000),
     )
     .call(arbgasinfo, &calldata("getMaxBlockGasLimit()", &[]));
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }
 
 #[test]
@@ -282,7 +282,7 @@ fn get_multi_gas_pricing_constraints_gated_to_v60() {
         arbgasinfo,
         &calldata("getMultiGasPricingConstraints()", &[]),
     );
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }
 
 #[test]
@@ -290,7 +290,7 @@ fn get_multi_gas_base_fee_gated_to_v60() {
     let run = fixture(59)
         .gas(50_000)
         .call(arbgasinfo, &calldata("getMultiGasBaseFee()", &[]));
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }
 
 #[test]

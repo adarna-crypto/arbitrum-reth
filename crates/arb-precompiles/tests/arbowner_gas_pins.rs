@@ -1,11 +1,7 @@
 //! Per-selector gas pins for ArbOwner (0x70).
 //!
-//! ArbOwner is owner-gated: every selector first runs `verify_owner`, which
-//! reads the chain_owners membership for `caller` (2 SLOAD = 1600). After
-//! that the dispatcher resets the per-call gas accumulator and runs the
-//! selector body. The dispatcher then writes `gas_used = 0` into the output
-//! struct on success or revert; the final billable cost is what
-//! `gas_check` sees on the error path, i.e. the wrapper's `gas_used`.
+//! The valid authorized selector calls tested here are free. Failed authentication
+//! halts exceptionally and retains metered storage reads in multi-dimensional gas.
 
 mod common;
 
@@ -50,20 +46,95 @@ fn fixture(v: u64) -> PrecompileTest {
     )
 }
 
-// ── Owner-gating: caller not in chain_owners reverts ────────────────
-
 #[test]
-fn caller_not_owner_propagates_revert_err() {
-    // verify_owner returns Err on non-owner — the dispatcher uses `?` so
-    // the error escapes before the post-call wrapper would have converted
-    // it via `gas_check`. The result reaches the caller as Err.
+fn caller_not_owner_returns_exceptional_halt() {
     let run = PrecompileTest::new()
         .arbos_version(30)
         .caller(INTRUDER)
         .arbos_state()
         .gas(50_000)
         .call(arbowner, &calldata("getNetworkFeeAccount()", &[]));
-    assert!(run.result.is_err());
+    assert!(run.assert_ok().is_halt());
+}
+
+#[test]
+fn denied_owner_call_keeps_only_affordable_storage_read_dimensions() {
+    use arb_primitives::multigas::{MultiGas, ResourceKind};
+    for gas in [0, 799, 800, 1599, 1600, 50_000] {
+        let mut context = None;
+        let run = PrecompileTest::new()
+            .arbos_version(60)
+            .caller(INTRUDER)
+            .arbos_state()
+            .gas(gas)
+            .call(
+                |ctx| {
+                    context = Some(ctx.clone());
+                    arbowner(ctx)
+                },
+                &calldata("getNetworkFeeAccount()", &[]),
+            );
+        assert!(run.assert_ok().is_halt());
+        let reads = gas.min(1600) / 800 * 800;
+        assert_eq!(
+            context.unwrap().precompile_multi_gas(),
+            MultiGas::new(ResourceKind::StorageAccessRead, reads)
+        );
+    }
+    let mut context = None;
+    let run = fixture(60).gas(50_000).call(
+        |ctx| {
+            context = Some(ctx.clone());
+            arbowner(ctx)
+        },
+        &calldata("getNetworkFeeAccount()", &[]),
+    );
+    assert!(run.assert_ok().is_success());
+    assert_eq!(run.gas_used(), 0);
+    assert_eq!(context.unwrap().precompile_multi_gas(), MultiGas::zero());
+}
+
+#[test]
+fn denied_owner_call_is_authenticated_before_inner_guards() {
+    for (data, value, is_static, delegated) in [
+        (alloy_primitives::Bytes::new(), U256::ZERO, false, false),
+        (
+            calldata(
+                "setWasmMaxStylusFragments(uint32)",
+                &[word_u256(U256::from(2))],
+            ),
+            U256::ZERO,
+            true,
+            false,
+        ),
+        (
+            calldata("getNetworkFeeAccount()", &[]),
+            U256::from(1),
+            false,
+            false,
+        ),
+        (
+            calldata("getNetworkFeeAccount()", &[]),
+            U256::ZERO,
+            false,
+            true,
+        ),
+    ] {
+        let run = PrecompileTest::new()
+            .arbos_version(60)
+            .caller(INTRUDER)
+            .arbos_state()
+            .gas(50_000)
+            .value(value)
+            .static_call(is_static)
+            .bytecode_address(if delegated {
+                arb_precompiles::ARBOWNER_ADDRESS
+            } else {
+                Address::ZERO
+            })
+            .call(arbowner, &data);
+        assert!(run.assert_ok().is_halt());
+    }
 }
 
 // ── Body returns gas, dispatcher overrides to 0 ─────────────────────
@@ -89,7 +160,7 @@ fn get_infra_fee_account_below_v5_reverts_burning_gas_limit() {
         .gas(50_000)
         .call(arbowner, &calldata("getInfraFeeAccount()", &[]));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 50_000);
 }
 
@@ -242,7 +313,7 @@ fn set_gas_backlog_below_v50_reverts_burning_gas_limit() {
         &calldata("setGasBacklog(uint64)", &[word_u256(U256::from(1u64))]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 50_000);
 }
 

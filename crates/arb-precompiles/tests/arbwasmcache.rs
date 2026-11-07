@@ -145,7 +145,7 @@ fn cache_codehash_rejects_non_manager_non_owner() {
             &calldata("cacheCodehash(bytes32)", &[codehash]),
         );
     let out = run.assert_ok();
-    assert!(out.reverted, "non-authorized cacheCodehash must revert");
+    assert!(out.is_revert(), "non-authorized cacheCodehash must revert");
 }
 
 #[test]
@@ -250,7 +250,7 @@ fn cache_codehash_reverts_program_needs_upgrade_for_stale_version() {
             &calldata("cacheCodehash(bytes32)", &[codehash]),
         );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     let sel = alloy_primitives::keccak256(b"ProgramNeedsUpgrade(uint16,uint16)");
     assert_eq!(&out.bytes[..4], &sel[..4]);
 }
@@ -284,7 +284,7 @@ fn cache_codehash_reverts_program_expired() {
             &calldata("cacheCodehash(bytes32)", &[codehash]),
         );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     let sel = alloy_primitives::keccak256(b"ProgramExpired(uint64)");
     assert_eq!(&out.bytes[..4], &sel[..4]);
 }

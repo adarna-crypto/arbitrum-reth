@@ -849,6 +849,10 @@ mod tests {
     type TestDb = State<CacheDB<EmptyDB>>;
 
     fn database() -> TestDb {
+        database_at_version(61)
+    }
+
+    fn database_at_version(version: u64) -> TestDb {
         let mut database = StateBuilder::new()
             .with_database(CacheDB::new(EmptyDB::default()))
             .with_bundle_update()
@@ -860,7 +864,7 @@ mod tests {
             Address::ZERO,
             Address::ZERO,
             U256::from(100_000_000u64),
-            61,
+            version,
             SystemBurner::new(None, false),
         )
         .unwrap();
@@ -898,6 +902,63 @@ mod tests {
         );
         database.merge_transitions(BundleRetention::PlainState);
         database
+    }
+
+    #[test]
+    fn executor_initializes_filtered_state_nonce_only_after_activation() {
+        use arb_storage::FILTERED_TX_STATE_ADDRESS;
+        for version in [59, 60, 61] {
+            for existing in [false, true] {
+                let mut database = database_at_version(version);
+                if existing {
+                    database.insert_account_with_storage(
+                        FILTERED_TX_STATE_ADDRESS,
+                        AccountInfo {
+                            balance: U256::from(42),
+                            ..Default::default()
+                        },
+                        [(U256::from(7), U256::from(99))].into_iter().collect(),
+                    );
+                } else {
+                    database.insert_not_existing(FILTERED_TX_STATE_ADDRESS);
+                }
+                let mut block = header();
+                block.mix_hash = arbos::header::compute_arbos_mixhash(0, 9, version, false);
+                let output = execute_simulated_batch(
+                    &config(),
+                    database,
+                    &block,
+                    Vec::new(),
+                    ArbSimulationProgress::default(),
+                    Some(ArbSimulationBlockStart {
+                        l1_base_fee: U256::ZERO,
+                        l1_block_number: 9,
+                        time_passed: 0,
+                    }),
+                    true,
+                    ArbSimulationValidation::relaxed(),
+                )
+                .unwrap();
+                assert!(output.progress.block_initialized());
+                let changed = output.bundle.state.get(&FILTERED_TX_STATE_ADDRESS);
+                if version < 60 {
+                    assert!(
+                        changed.is_none(),
+                        "pre-activation account must not be mutated"
+                    );
+                } else {
+                    let info = changed
+                        .and_then(|account| account.info.as_ref())
+                        .expect("executor must publish system account");
+                    assert_eq!(info.nonce, 1);
+                    assert_eq!(info.balance, U256::from(if existing { 42 } else { 0 }));
+                    assert!(
+                        changed.unwrap().storage.is_empty(),
+                        "nonce initialization must not write storage"
+                    );
+                }
+            }
+        }
     }
 
     #[test]
@@ -964,8 +1025,10 @@ mod tests {
     }
 
     fn config() -> ArbEvmConfig<ChainSpec> {
-        let mut chain_spec = ChainSpec::default();
-        chain_spec.chain = reth_chainspec::Chain::from(CHAIN_ID);
+        let chain_spec = ChainSpec {
+            chain: reth_chainspec::Chain::from(CHAIN_ID),
+            ..Default::default()
+        };
         ArbEvmConfig::new(Arc::new(chain_spec))
     }
 
@@ -1139,6 +1202,56 @@ mod tests {
         .unwrap();
         filter_unchanged_storage(&mut bundle);
         (bundle, progress)
+    }
+
+    #[test]
+    fn unauthorized_owner_call_consumes_full_transaction_gas_without_aborting_block() {
+        use alloy_consensus::Transaction as _;
+        let selector_hash = keccak256("getNetworkFeeAccount()");
+        let input = Bytes::copy_from_slice(&selector_hash.as_slice()[..4]);
+        for version in [30, 59, 60, 61] {
+            let signed = signed_1559(
+                0,
+                arb_precompiles::ARBOWNER_ADDRESS,
+                U256::ZERO,
+                input.clone(),
+            );
+            let gas_limit = signed.gas_limit();
+            let transaction =
+                ArbSimulationTransaction::from_signed(signed.try_into_recovered().unwrap());
+            let mut block = header();
+            block.mix_hash = arbos::header::compute_arbos_mixhash(0, 9, version, false);
+            let output = execute_simulated_transaction(
+                &config(),
+                database_at_version(version),
+                &block,
+                transaction,
+                ArbSimulationProgress::initialized(Some(1_000_000), 7),
+                None,
+                false,
+                ArbSimulationValidation::strict(),
+            )
+            .unwrap();
+            assert!(
+                matches!(output.result, ExecutionResult::Halt { .. }),
+                "version={version} {:?}",
+                output.result
+            );
+            assert_eq!(output.result.tx_gas_used(), gas_limit, "version={version}");
+            assert_eq!(
+                output
+                    .bundle
+                    .state
+                    .get(&SENDER)
+                    .unwrap()
+                    .info
+                    .as_ref()
+                    .unwrap()
+                    .nonce,
+                1
+            );
+            assert_eq!(output.progress.user_txs_processed(), 8);
+        }
     }
 
     #[test]

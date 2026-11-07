@@ -66,7 +66,7 @@ fn handler(input: PrecompileInput<'_>, ctx: &ArbPrecompileCtx) -> PrecompileResu
         }
         // Get unconditionally reverts (table is empty). gas_check will return
         // accumulated_gas (OpenArbosState + argsCost) on the revert path.
-        ArbFunctionTableCalls::get(_) => Err(ArbPrecompileError::empty_revert(gas_used).into()),
+        ArbFunctionTableCalls::get(_) => Err(ArbPrecompileError::empty_revert(gas_used)),
     };
     crate::gas_check(ctx, gas_limit, gas_used, result)
 }

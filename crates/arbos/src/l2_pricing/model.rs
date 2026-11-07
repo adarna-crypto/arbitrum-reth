@@ -1060,7 +1060,7 @@ mod tests {
         );
 
         // --- Simulate filter_unchanged_storage (inline, since it's private in producer.rs) ---
-        for (_addr, account) in bundle.state.iter_mut() {
+        for account in bundle.state.values_mut() {
             account
                 .storage
                 .retain(|_key, slot| slot.present_value != slot.previous_or_original_value);
@@ -1334,7 +1334,7 @@ mod tests {
         );
 
         // filter_unchanged_storage
-        for (_addr, account) in bundle.state.iter_mut() {
+        for account in bundle.state.values_mut() {
             account
                 .storage
                 .retain(|_key, slot| slot.present_value != slot.previous_or_original_value);
@@ -1546,7 +1546,7 @@ mod tests {
             .map(|s| s.present_value);
 
         // filter_unchanged_storage
-        for (_addr, account) in bundle.state.iter_mut() {
+        for account in bundle.state.values_mut() {
             account
                 .storage
                 .retain(|_key, slot| slot.present_value != slot.previous_or_original_value);
@@ -1736,7 +1736,7 @@ mod tests {
                 .map(|s| (s.present_value, s.previous_or_original_value));
 
             // Step 9: filter_unchanged_storage
-            for (_addr, account) in bundle.state.iter_mut() {
+            for account in bundle.state.values_mut() {
                 account
                     .storage
                     .retain(|_key, slot| slot.present_value != slot.previous_or_original_value);
@@ -1870,7 +1870,7 @@ mod tests {
                 .map(|s| (s.present_value, s.previous_or_original_value));
 
             // filter_unchanged_storage
-            for (_addr, account) in bundle.state.iter_mut() {
+            for account in bundle.state.values_mut() {
                 account
                     .storage
                     .retain(|_key, slot| slot.present_value != slot.previous_or_original_value);
@@ -2007,7 +2007,7 @@ mod tests {
                 .map(|s| (s.present_value, s.previous_or_original_value));
 
             // filter_unchanged_storage
-            for (_addr, account) in bundle.state.iter_mut() {
+            for account in bundle.state.values_mut() {
                 account
                     .storage
                     .retain(|_key, slot| slot.present_value != slot.previous_or_original_value);
@@ -2180,7 +2180,7 @@ mod tests {
                 .map(|s| (s.present_value, s.previous_or_original_value));
 
             // filter
-            for (_addr, account) in bundle.state.iter_mut() {
+            for account in bundle.state.values_mut() {
                 account
                     .storage
                     .retain(|_key, slot| slot.present_value != slot.previous_or_original_value);
@@ -2409,7 +2409,7 @@ mod tests {
                 .map(|s| (s.present_value, s.previous_or_original_value));
 
             // filter_unchanged_storage
-            for (_addr, account) in bundle.state.iter_mut() {
+            for account in bundle.state.values_mut() {
                 account
                     .storage
                     .retain(|_key, slot| slot.present_value != slot.previous_or_original_value);
@@ -2541,7 +2541,7 @@ mod tests {
             // already have the slot.
 
             // filter
-            for (_addr, account) in bundle.state.iter_mut() {
+            for account in bundle.state.values_mut() {
                 account
                     .storage
                     .retain(|_key, slot| slot.present_value != slot.previous_or_original_value);
@@ -2652,7 +2652,7 @@ mod tests {
                 .map(|s| (s.present_value, s.previous_or_original_value));
 
             // filter
-            for (_addr, account) in bundle.state.iter_mut() {
+            for account in bundle.state.values_mut() {
                 account
                     .storage
                     .retain(|_key, slot| slot.present_value != slot.previous_or_original_value);

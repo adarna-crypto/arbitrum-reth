@@ -598,23 +598,27 @@ where
         let provisional_mix_hash =
             compute_mix_hash(send_count, block_l1_block_number, arbos_version);
 
-        // Open state at parent block via block hash.
-        let raw_state_provider = self
-            .provider
-            .state_by_block_hash(parent_header.hash())
-            .map_err(|e| BlockProducerError::StateAccess(e.to_string()))?;
-
         let state_provider: StateProviderBox =
             if let Some(head_state) = self.in_memory_state.state_by_hash(parent_header.hash()) {
+                let historical = self
+                    .provider
+                    .history_by_block_hash(head_state.anchor().hash)
+                    .map_err(|e| BlockProducerError::StateAccess(e.to_string()))?;
                 let overlay = self.get_or_build_overlay(parent_header.hash(), &head_state);
                 if overlay.is_empty() {
-                    raw_state_provider
+                    head_state.state_provider(historical).boxed()
                 } else {
-                    crate::coalesced_state::CoalescedStateProvider::new(raw_state_provider, overlay)
-                        .boxed()
+                    crate::coalesced_state::CoalescedStateProvider::new(
+                        historical,
+                        &head_state,
+                        overlay,
+                    )
+                    .boxed()
                 }
             } else {
-                raw_state_provider
+                self.provider
+                    .state_by_block_hash(parent_header.hash())
+                    .map_err(|e| BlockProducerError::StateAccess(e.to_string()))?
             };
 
         // Read the L2 baseFee from the parent's committed state.
@@ -1407,7 +1411,7 @@ where
             .live_ipc
             .as_ref()
             .filter(|publisher| publisher.should_capture())
-            .map(|_| {
+            .and_then(|_| {
                 let started = std::time::Instant::now();
                 let result = encode_live_canonical_update(
                     sealed.header(),
@@ -1433,8 +1437,7 @@ where
                         None
                     }
                 }
-            })
-            .flatten();
+            });
 
         // Buffer block in memory for batched persistence.
         {
@@ -1446,9 +1449,10 @@ where
             // Storage V2 persists transaction senders in a dedicated static-file segment.
             // Every transaction in this block has already been recovered for execution, so this
             // normally reads the warmed sender cache. Keeping the complete sender vector on the
-            // executed block is required for `save_blocks(Full)` to advance that segment in lockstep
-            // with transactions; an empty vector advances only its block index and makes startup
-            // consistency healing unwind the otherwise-durable blocks.
+            // executed block is required for `save_blocks(Full)` to advance that segment in
+            // lockstep with transactions; an empty vector advances only its block index
+            // and makes startup consistency healing unwind the otherwise-durable
+            // blocks.
             let recovered = Arc::new(RecoveredBlock::try_recover_sealed(sealed.clone()).map_err(
                 |e| {
                     BlockProducerError::Execution(format!(
@@ -1952,7 +1956,7 @@ fn encode_live_canonical_update(
             slots,
         });
     }
-    state_changeset.sort_unstable_by(|a, b| a.address.cmp(&b.address));
+    state_changeset.sort_unstable_by_key(|account| account.address);
 
     let update = LiveCanonicalUpdateFrame {
         block: LiveCanonicalBlockFrame {
@@ -1992,7 +1996,7 @@ fn canonicalize_live_slots(
     if matches!(account_change, LiveAccountInfoChangeFrame::Deleted) {
         slots.clear();
     } else {
-        slots.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+        slots.sort_unstable_by_key(|slot| slot.0);
     }
 }
 
@@ -2074,7 +2078,7 @@ fn delete_empty_accounts(
 
 /// Remove unchanged storage slots from the bundle.
 fn filter_unchanged_storage(bundle: &mut BundleState) {
-    for (_addr, account) in bundle.state.iter_mut() {
+    for account in bundle.state.values_mut() {
         account
             .storage
             .retain(|_key, slot| slot.present_value != slot.previous_or_original_value);

@@ -61,7 +61,7 @@ fn get_reverts_burning_accumulated_gas_v30_gas_pin() {
         ),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     // OpenArbosState(800) + argsCost(2 * 3) = 806
     assert_eq!(out.gas_used, SLOAD_GAS + 2 * COPY_GAS);
 }

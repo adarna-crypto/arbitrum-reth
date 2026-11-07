@@ -198,8 +198,8 @@ impl<'a, D> RetryableState<'a, D> {
         mut balance_of: G,
     ) -> Result<bool, RetryableError>
     where
-        F: FnMut(Address, Address, U256) -> Result<(), BalanceError>,
-        G: FnMut(Address) -> U256,
+        F: FnMut(&mut B, Address, Address, U256) -> Result<(), BalanceError>,
+        G: FnMut(&mut B, Address) -> U256,
         B: StorageBackend,
     {
         let ret = self.internal_open(id);
@@ -210,8 +210,8 @@ impl<'a, D> RetryableState<'a, D> {
 
         let beneficiary_address = ret.beneficiary.get(backend)?;
         let escrow_address = retryable_escrow_address(id);
-        let amount = balance_of(escrow_address);
-        transfer_fn(escrow_address, beneficiary_address, amount)?;
+        let amount = balance_of(backend, escrow_address);
+        transfer_fn(backend, escrow_address, beneficiary_address, amount)?;
 
         clear_ticket_fields(backend, &ret)?;
         Ok(true)
@@ -374,8 +374,8 @@ impl<'a, D> RetryableState<'a, D> {
         mut balance_of: G,
     ) -> Result<(), RetryableError>
     where
-        F: FnMut(Address, Address, U256) -> Result<(), BalanceError>,
-        G: FnMut(Address) -> U256,
+        F: FnMut(&mut B, Address, Address, U256) -> Result<(), BalanceError>,
+        G: FnMut(&mut B, Address) -> U256,
         B: StorageBackend,
     {
         let id = self.timeout_queue.peek(backend)?;

@@ -27,8 +27,7 @@ use revm::{
     inspector::{InspectorHandler, NoOpInspector},
     interpreter::{
         instructions::{GasTable, InstructionTable},
-        interpreter::EthInterpreter,
-        interpreter::Interpreter,
+        interpreter::{EthInterpreter, Interpreter},
         interpreter_action::{FrameInit, InterpreterAction},
         interpreter_types::{InputsTr, Jumps, LoopControl, ReturnData, RuntimeFlag, StackTr},
         CallInput, CallInputs, CallOutcome, CallScheme, FrameInput, Gas as EvmGas, Host,

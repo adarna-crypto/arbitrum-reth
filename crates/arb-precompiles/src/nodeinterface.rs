@@ -45,7 +45,7 @@ fn handler(mut input: PrecompileInput<'_>, ctx: &ArbPrecompileCtx) -> Precompile
         Calls::legacyLookupMessageBatchProof(_) => handle_legacy_lookup_empty(&input),
         Calls::l2BlockRangeForL1(_)
         | Calls::estimateRetryableTicket(_)
-        | Calls::constructOutboxProof(_) => Err(ArbPrecompileError::empty_revert(gas_used).into()),
+        | Calls::constructOutboxProof(_) => Err(ArbPrecompileError::empty_revert(gas_used)),
     };
     crate::gas_check(ctx, gas_limit, gas_used, result)
 }

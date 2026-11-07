@@ -22,7 +22,7 @@ fn debug_methods_revert_in_production() {
             .arbos_state()
             .call(arbdebug, &calldata(sig, &[]));
         assert!(
-            run.assert_ok().reverted,
+            run.assert_ok().is_revert(),
             "{sig} must revert when debug precompiles are disabled"
         );
     }

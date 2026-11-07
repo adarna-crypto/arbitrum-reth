@@ -256,7 +256,7 @@ fn handle_redeem(
     {
         let current_retryable = ctx.tx_snapshot().retryable_id;
         if !current_retryable.is_zero() && current_retryable == ticket_id {
-            return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+            return Err(ArbPrecompileError::empty_revert(*gas_used));
         }
     }
 
@@ -324,11 +324,11 @@ fn handle_redeem(
     let gas_remaining = gas_limit.saturating_sub(gas_used_so_far);
     if gas_remaining < future_gas_costs {
         *gas_used = gas_limit;
-        return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+        return Err(ArbPrecompileError::empty_revert(*gas_used));
     }
     let gas_to_donate = gas_remaining - future_gas_costs;
     if gas_to_donate < TX_GAS {
-        return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+        return Err(ArbPrecompileError::empty_revert(*gas_used));
     }
 
     let actual_backlog_cost = compute_actual_backlog_cost(input, ctx, gas_to_donate)?;
@@ -398,9 +398,9 @@ fn handle_keepalive(
     let lookup = match retryable_state.keepalive(internals, ticket_id, now, window_limit, 0) {
         Ok(l) => l,
         Err(RetryableError::TimeoutTooFarFuture) => {
-            return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+            return Err(ArbPrecompileError::empty_revert(*gas_used));
         }
-        Err(e) => return Err(map_retryable_error(e, *gas_used).into()),
+        Err(e) => return Err(map_retryable_error(e, *gas_used)),
     };
     crate::charge_storage_read(gas_used, ctx, lookup.extra_gas);
     let new_timeout = match lookup.outcome {
@@ -449,7 +449,7 @@ fn handle_cancel(
     {
         let current_retryable = ctx.tx_snapshot().retryable_id;
         if !current_retryable.is_zero() && current_retryable == ticket_id {
-            return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+            return Err(ArbPrecompileError::empty_revert(*gas_used));
         }
     }
 
@@ -481,7 +481,7 @@ fn handle_cancel(
         }
         CancelOutcome::NotBeneficiary => {
             crate::charge_storage_read(gas_used, ctx, 2 * SLOAD_GAS);
-            return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+            return Err(ArbPrecompileError::empty_revert(*gas_used));
         }
     };
 

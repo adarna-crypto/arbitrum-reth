@@ -156,7 +156,7 @@ fn rectify_chain_owner_reverts_when_caller_not_owner_at_v11() {
         &calldata("rectifyChainOwner(address)", &[word_address(target)]),
     );
     assert!(
-        matches!(&run.result, Ok(o) if o.reverted),
+        matches!(&run.result, Ok(o) if o.is_revert()),
         "non-owner rectify must revert",
     );
 }

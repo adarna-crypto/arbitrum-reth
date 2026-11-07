@@ -1327,9 +1327,8 @@ fn stylus_wasm_computation_constraint_matches_nitro() {
 
     // Repeated calls dispatch to the Stylus program, each consuming WASM gas that
     // must grow the WasmComputation backlog.
-    let mut nonce = 5u64;
-    let mut ts = 1_700_000_020u64;
-    for _ in 0..8 {
+    for nonce in 5u64..13 {
+        let ts = 1_700_000_020 + (nonce - 5) * 10;
         let mut call_b = owner_tx_l1(
             nonce,
             Some(root_addr),
@@ -1340,8 +1339,6 @@ fn stylus_wasm_computation_constraint_matches_nitro() {
         call_b.timestamp = ts;
         let i = idx.next();
         steps.push(msg_step(i, call_b.build().expect("call root"), 1));
-        nonce += 1;
-        ts += 10;
     }
 
     let scenario = Scenario {
@@ -1504,16 +1501,13 @@ fn stylus_to_solidity_write_constraint_matches_nitro() {
 
     // First write creates slot 0; the rest are resets pricing into
     // StorageAccessWrite, reached through the Stylus -> Solidity sub-call.
-    let mut nonce = 5u64;
-    let mut ts = 1_700_000_030u64;
-    for v in [1u64, 2, 3, 4] {
+    for (nonce, v) in (5u64..).zip([1u64, 2, 3, 4]) {
+        let ts = 1_700_000_030 + (nonce - 5) * 10;
         let cd = forward_calldata(helper, &word(v));
         let mut b = owner_tx_l1(nonce, Some(sol_caller), cd, 50_000_000, 0);
         b.timestamp = ts;
         let i = idx.next();
         steps.push(msg_step(i, b.build().expect("forward"), 1));
-        nonce += 1;
-        ts += 10;
     }
 
     let scenario = Scenario {
@@ -1624,17 +1618,14 @@ fn precompile_write_constraint_matches_nitro() {
         1,
     ));
 
-    let mut nonce = 1u64;
-    let mut ts = 1_700_000_010u64;
-    for v in [1u64, 2, 3, 4, 5, 6, 7, 8] {
+    for (nonce, v) in (1u64..).zip([1u64, 2, 3, 4, 5, 6, 7, 8]) {
+        let ts = 1_700_000_010 + (nonce - 1) * 10;
         let mut set_price = selector4("setL1PricePerUnit(uint256)").to_vec();
         set_price.extend_from_slice(&word(v));
         let mut b = owner_tx_l1(nonce, Some(ARBOWNER), set_price, 2_000_000, 0);
         b.timestamp = ts;
         let i = idx.next();
         steps.push(msg_step(i, b.build().expect("set price"), 1));
-        nonce += 1;
-        ts += 10;
     }
 
     let scenario = Scenario {
@@ -1751,17 +1742,14 @@ fn precompile_read_constraint_matches_nitro() {
     let mut probe_word = [0u8; 32];
     probe_word[12..].copy_from_slice(probe.as_slice());
 
-    let mut nonce = 1u64;
-    let mut ts = 1_700_000_010u64;
-    for _ in 0..8u32 {
+    for nonce in 1u64..9 {
+        let ts = 1_700_000_010 + (nonce - 1) * 10;
         let mut data = selector4("addressExists(address)").to_vec();
         data.extend_from_slice(&probe_word);
         let mut b = owner_tx_l1(nonce, Some(ARBADDRESSTABLE), data, 2_000_000, 0);
         b.timestamp = ts;
         let i = idx.next();
         steps.push(msg_step(i, b.build().expect("addressExists"), 1));
-        nonce += 1;
-        ts += 10;
     }
 
     let scenario = Scenario {

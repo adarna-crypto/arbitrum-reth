@@ -180,8 +180,10 @@ impl StylusRoot {
             ));
         }
         let addresses = address_data
-            .chunks_exact(20)
-            .map(alloy_primitives::Address::from_slice)
+            .as_chunks::<20>()
+            .0
+            .iter()
+            .map(|address| alloy_primitives::Address::from_slice(address))
             .collect();
         Ok(Self {
             dictionary: bytecode[3],

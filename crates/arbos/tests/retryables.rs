@@ -1,8 +1,10 @@
 use alloy_primitives::{address, b256, keccak256, Address, B256, U256};
+use arb_storage::AccountStateBackend;
 use arb_test_utils::ArbosHarness;
 use arbos::retryables::{
     retryable_escrow_address, retryable_submission_fee, RETRYABLE_LIFETIME_SECONDS,
 };
+use revm::{state::AccountInfo, Database};
 
 const FROM: Address = address!("00000000000000000000000000000000000A11CE");
 const BENEFICIARY: Address = address!("00000000000000000000000000000000000B0B00");
@@ -118,11 +120,11 @@ fn delete_returns_false_for_unknown_id() {
         .delete_retryable(
             unsafe { &mut *state_ptr },
             b256!("0000000000000000000000000000000000000000000000000000000000000099"),
-            |from, to, amount| {
+            |_backend, from, to, amount| {
                 transfers.push((from, to, amount));
                 Ok(())
             },
-            |_| U256::ZERO,
+            |_backend, _addr| U256::ZERO,
         )
         .unwrap();
 
@@ -136,36 +138,57 @@ fn delete_clears_storage_and_transfers_escrow() {
     submit(&mut h, TICKET_ID, 1_000, b"data");
     let escrow = retryable_escrow_address(TICKET_ID);
     let escrow_balance = U256::from(7_777_777u64);
+    let beneficiary_balance = U256::from(123u64);
+    h.state().insert_account(
+        escrow,
+        AccountInfo {
+            balance: escrow_balance,
+            ..Default::default()
+        },
+    );
+    h.state().insert_account(
+        BENEFICIARY,
+        AccountInfo {
+            balance: beneficiary_balance,
+            ..Default::default()
+        },
+    );
 
-    let state_ptr = h.state_ptr();
     let mut transfers = Vec::new();
-    let did = {
-        let rs = h.retryable_state();
-        rs.delete_retryable(
-            unsafe { &mut *state_ptr },
+    let rs = h.retryable_state();
+    let did = rs
+        .delete_retryable(
+            h.state(),
             TICKET_ID,
-            |from, to, amount| {
+            |backend, from, to, amount| {
+                assert!(rs
+                    .open_retryable(backend, TICKET_ID, 500)
+                    .unwrap()
+                    .is_some());
+                let mut source = backend.basic(from).unwrap().unwrap();
+                let mut destination = backend.basic(to).unwrap().unwrap();
+                source.balance -= amount;
+                destination.balance += amount;
+                backend.insert_account(from, source);
+                backend.insert_account(to, destination);
                 transfers.push((from, to, amount));
                 Ok(())
             },
-            |addr| {
-                if addr == escrow {
-                    escrow_balance
-                } else {
-                    U256::ZERO
-                }
-            },
+            |backend, addr| backend.account_balance(addr).unwrap(),
         )
-        .unwrap()
-    };
+        .unwrap();
 
     assert!(did);
     assert_eq!(transfers, vec![(escrow, BENEFICIARY, escrow_balance)]);
-
-    let state_ptr = h.state_ptr();
-    let rs = h.retryable_state();
-    let b = unsafe { &mut *state_ptr };
-    assert!(rs.open_retryable(b, TICKET_ID, 500).unwrap().is_none());
+    assert_eq!(h.state().account_balance(escrow).unwrap(), U256::ZERO);
+    assert_eq!(
+        h.state().account_balance(BENEFICIARY).unwrap(),
+        beneficiary_balance + escrow_balance
+    );
+    assert!(rs
+        .open_retryable(h.state(), TICKET_ID, 500)
+        .unwrap()
+        .is_none());
 }
 
 #[test]

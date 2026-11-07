@@ -44,7 +44,7 @@ fn mint_rejects_non_owner_caller() {
             arbnativetokenmanager,
             &calldata("mintNativeToken(uint256)", &[word_u256(U256::from(1))]),
         );
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }
 
 #[test]
@@ -75,5 +75,5 @@ fn burn_rejects_non_owner() {
             arbnativetokenmanager,
             &calldata("burnNativeToken(uint256)", &[word_u256(U256::from(1))]),
         );
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }

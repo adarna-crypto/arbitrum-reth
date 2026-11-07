@@ -36,7 +36,7 @@ fn submit_retryable_v30_revert_gas_pin() {
     data.extend_from_slice(&payload);
     let run = fixture().call(arbretryabletx, &data.into());
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 839);
 }
 
@@ -48,7 +48,7 @@ fn get_timeout_unknown_v30_revert_gas_pin() {
         &calldata("getTimeout(bytes32)", &[word_u256(ticket_id.into())]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 1606);
 }
 
@@ -60,7 +60,7 @@ fn get_beneficiary_unknown_v30_revert_gas_pin() {
         &calldata("getBeneficiary(bytes32)", &[word_u256(ticket_id.into())]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 1606);
 }
 
@@ -72,7 +72,7 @@ fn redeem_unknown_v30_revert_gas_pin() {
         &calldata("redeem(bytes32)", &[word_u256(ticket_id.into())]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 2406);
 }
 
@@ -84,7 +84,7 @@ fn keepalive_unknown_v30_revert_gas_pin() {
         &calldata("keepalive(bytes32)", &[word_u256(ticket_id.into())]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 1606);
 }
 
@@ -96,6 +96,6 @@ fn cancel_unknown_v30_revert_gas_pin() {
         &calldata("cancel(bytes32)", &[word_u256(ticket_id.into())]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 1606);
 }

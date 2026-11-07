@@ -125,6 +125,6 @@ fn rpc_only_methods_still_revert() {
             .arbos_version(30)
             .arbos_state()
             .call(nodeinterface, &calldata(sig, &[word_u256(U256::ZERO)]));
-        assert!(run.assert_ok().reverted, "{sig} must revert (RPC-only)",);
+        assert!(run.assert_ok().is_revert(), "{sig} must revert (RPC-only)",);
     }
 }

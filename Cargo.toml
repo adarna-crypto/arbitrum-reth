@@ -128,19 +128,19 @@ reth-trie-sparse = { git = "https://github.com/paradigmxyz/reth.git", rev = "431
 reth-metrics = { git = "https://github.com/paradigmxyz/reth.git", rev = "43196ba7b5e4317defd30abb2bf74ec72a00979a" }
 
 # Alloy
-alloy-primitives = { version = "=1.6.0", default-features = false, features = ["map-foldhash"] }
-alloy-consensus = { version = "=2.1.0", default-features = false }
-alloy-eips = { version = "=2.1.0", default-features = false }
+alloy-primitives = { version = "=1.6.1", default-features = false, features = ["map-foldhash"] }
+alloy-consensus = { version = "=2.3.0", default-features = false }
+alloy-eips = { version = "=2.3.0", default-features = false }
 alloy-evm = { version = "=0.37.0", features = ["rpc"] }
-alloy-rpc-types-eth = { version = "=2.1.0" }
-alloy-genesis = { version = "=2.1.0" }
-alloy-network = { version = "=2.1.0" }
-alloy-rlp = { version = "=0.3.15", features = ["derive"] }
-alloy-rpc-types = { version = "=2.1.0" }
-alloy-rpc-types-engine = { version = "=2.1.0" }
-alloy-rpc-types-trace = { version = "=2.1.0" }
-alloy-serde = { version = "=2.1.0" }
-alloy-sol-types = { version = "=1.6.0" }
+alloy-rpc-types-eth = { version = "=2.3.0" }
+alloy-genesis = { version = "=2.3.0" }
+alloy-network = { version = "=2.3.0" }
+alloy-rlp = { version = "=0.3.16", features = ["derive"] }
+alloy-rpc-types = { version = "=2.3.0" }
+alloy-rpc-types-engine = { version = "=2.3.0" }
+alloy-rpc-types-trace = { version = "=2.3.0" }
+alloy-serde = { version = "=2.3.0" }
+alloy-sol-types = { version = "=1.6.1" }
 alloy-trie = { version = "0.9.4" }
 alloy-hardforks = { version = "0.4.7" }
 

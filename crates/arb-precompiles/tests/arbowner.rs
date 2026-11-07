@@ -56,7 +56,7 @@ fn rejects_caller_not_in_chain_owners() {
         .arbos_state()
         .gas(100_000)
         .call(arbowner, &calldata("getNetworkFeeAccount()", &[]));
-    assert!(run.result.is_err());
+    assert!(run.assert_ok().is_halt());
 }
 
 #[test]
@@ -282,7 +282,7 @@ fn set_l2_gas_pricing_inertia_rejects_zero() {
         &calldata("setL2GasPricingInertia(uint64)", &[word_u256(U256::ZERO)]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted, "zero inertia must revert");
+    assert!(out.is_revert(), "zero inertia must revert");
 }
 
 #[test]
@@ -321,7 +321,7 @@ fn set_gas_backlog_reverts_below_v50() {
         &calldata("setGasBacklog(uint64)", &[word_u256(value)]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
 }
 
 // ── Native token / transaction filterer events ──────────────────────
@@ -335,7 +335,7 @@ fn add_native_token_owner_requires_feature_enabled() {
         &calldata("addNativeTokenOwner(address)", &[word_address(new_owner)]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted, "feature not enabled must revert");
+    assert!(out.is_revert(), "feature not enabled must revert");
 }
 
 #[test]
@@ -349,7 +349,7 @@ fn set_native_token_management_from_writes_root_field() {
     // in the future of the current block timestamp; the harness uses
     // block_timestamp = 1_700_000_000 by default, so a same-time value reverts.
     let out = run.assert_ok();
-    assert!(out.reverted, "less-than-delay must revert");
+    assert!(out.is_revert(), "less-than-delay must revert");
 }
 
 #[test]
@@ -406,7 +406,7 @@ fn infra_fee_account_round_trip() {
         &calldata("setInfraFeeAccount(address)", &[word_address(new_addr)]),
     );
     let out = set_run.assert_ok();
-    assert!(!out.reverted);
+    assert!(out.is_success());
     assert_eq!(
         set_run.storage(ARBOS_STATE_ADDRESS, root_slot(INFRA_FEE_ACCOUNT_OFFSET)),
         U256::from_be_slice(new_addr.as_slice()),
@@ -612,7 +612,7 @@ mod stylus_params {
                 arbowner,
                 &calldata("setWasmFreePages(uint16)", &[word_u256(U256::from(65536))]),
             );
-        run.assert_err();
+        assert!(run.assert_ok().is_revert());
     }
 
     #[test]
@@ -626,6 +626,6 @@ mod stylus_params {
                     &[word_u256(U256::from(10)), word_u256(U256::from(70000))],
                 ),
             );
-        run.assert_err();
+        assert!(run.assert_ok().is_revert());
     }
 }

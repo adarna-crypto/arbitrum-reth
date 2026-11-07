@@ -224,7 +224,7 @@ fn set_fee_collector_rejects_unauthorised_caller() {
             ),
         );
     let out = run.assert_ok();
-    assert!(out.reverted, "stranger setFeeCollector must revert");
+    assert!(out.is_revert(), "stranger setFeeCollector must revert");
 }
 
 #[test]
@@ -462,7 +462,7 @@ fn add_batch_poster_non_owner_reverts_with_accumulated_gas() {
             &calldata("addBatchPoster(address)", &[word_address(new_poster)]),
         );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     // init(800 + 3) + is_chain_owner SLOAD(800) = 1603.
     assert_eq!(out.gas_used, 2 * SLOAD_GAS + COPY_GAS);
 }

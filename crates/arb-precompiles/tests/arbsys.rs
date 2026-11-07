@@ -156,7 +156,7 @@ fn arb_block_hash_reverts_for_future_block_arbos11() {
             &calldata("arbBlockHash(uint256)", &[word_u256(U256::from(100))]),
         );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(&out.bytes[..4], &[0xd5, 0xdc, 0x64, 0x2d]);
 }
 
@@ -171,7 +171,7 @@ fn arb_block_hash_reverts_for_too_old_block_arbos11() {
             &calldata("arbBlockHash(uint256)", &[word_u256(U256::from(500))]),
         );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
 }
 
 #[test]

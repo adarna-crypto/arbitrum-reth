@@ -4,7 +4,6 @@ use alloy_primitives::{address, hex, Address, Bytes, B256, B64, U256};
 use arb_chainspec::ArbitrumChainSpec;
 use arb_node::chainspec::ArbChainSpecParser;
 use reth_chainspec::EthChainSpec;
-use reth_cli::chainspec::ChainSpecParser;
 
 fn build_chain_json(arbos_version: u64) -> String {
     serde_json::json!({
