@@ -26,7 +26,7 @@ fn below_v41_mint_returns_noop_zero_gas() {
         &calldata("mintNativeToken(uint256)", &[word_u256(U256::from(1u64))]),
     );
     let out = run.assert_ok();
-    assert!(!out.is_revert());
+    assert!(out.is_success());
     assert_eq!(out.gas_used, 0);
 }
 

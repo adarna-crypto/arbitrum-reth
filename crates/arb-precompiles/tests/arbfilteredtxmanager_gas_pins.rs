@@ -36,7 +36,7 @@ fn below_v60_dispatch_returns_noop_zero_gas() {
         &b32_calldata("isTransactionFiltered(bytes32)", B256::ZERO),
     );
     let out = run.assert_ok();
-    assert!(!out.is_revert());
+    assert!(out.is_success());
     assert_eq!(out.gas_used, 0);
 }
 
@@ -49,7 +49,7 @@ fn is_transaction_filtered_non_filterer_caller_pays_wrapper_v60_gas_pin() {
         &b32_calldata("isTransactionFiltered(bytes32)", B256::ZERO),
     );
     let out = run.assert_ok();
-    assert!(!out.is_revert());
+    assert!(out.is_success());
     assert_eq!(out.gas_used, 2 * SLOAD);
 }
 

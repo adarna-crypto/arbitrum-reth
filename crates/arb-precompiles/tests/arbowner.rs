@@ -406,7 +406,7 @@ fn infra_fee_account_round_trip() {
         &calldata("setInfraFeeAccount(address)", &[word_address(new_addr)]),
     );
     let out = set_run.assert_ok();
-    assert!(!out.is_revert());
+    assert!(out.is_success());
     assert_eq!(
         set_run.storage(ARBOS_STATE_ADDRESS, root_slot(INFRA_FEE_ACCOUNT_OFFSET)),
         U256::from_be_slice(new_addr.as_slice()),

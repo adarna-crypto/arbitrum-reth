@@ -233,7 +233,7 @@ fn get_l1_confirmations_unknown_block_returns_zero_not_revert() {
     );
     let execution = run.assert_ok();
     assert!(
-        !execution.is_revert(),
+        execution.is_success(),
         "getL1Confirmations must return 0 for unknown blocks, not revert (matches Nitro when batch fetcher is nil)"
     );
     assert_eq!(decode_u256(run.output()), U256::ZERO);
@@ -258,7 +258,7 @@ fn find_batch_containing_block_without_batch_data_returns_zero() {
     );
     let execution = run.assert_ok();
     assert!(
-        !execution.is_revert(),
+        execution.is_success(),
         "findBatchContainingBlock must return 0, not revert, when no batch data is available"
     );
     assert_eq!(decode_u256(run.output()), U256::ZERO);
@@ -322,7 +322,7 @@ fn legacy_lookup_message_batch_proof_returns_empty_not_revert() {
     );
     let execution = run.assert_ok();
     assert!(
-        !execution.is_revert(),
+        execution.is_success(),
         "legacy lookup is not used post-Nitro; must return empty, not revert"
     );
 }

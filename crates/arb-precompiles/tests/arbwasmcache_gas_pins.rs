@@ -36,7 +36,7 @@ fn below_stylus_returns_noop_zero_gas() {
         .gas(50_000)
         .call(arbwasmcache, &calldata("allCacheManagers()", &[]));
     let out = run.assert_ok();
-    assert!(!out.is_revert());
+    assert!(out.is_success());
     assert_eq!(out.gas_used, 0);
 }
 

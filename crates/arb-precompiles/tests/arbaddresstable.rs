@@ -199,7 +199,7 @@ fn decompress_short_index_returns_registered_address() {
         .call(arbaddresstable, &data.into());
 
     let out = run.assert_ok();
-    assert!(!out.is_revert(), "decompress short-index must not revert");
+    assert!(out.is_success(), "decompress short-index must not revert");
     let (a, n) = decode_address_and_uint(run.output());
     assert_eq!(a, addr);
     assert_eq!(n, U256::from(1));
@@ -226,7 +226,7 @@ fn decompress_raw_21_byte_address_returns_raw() {
         .call(arbaddresstable, &data.into());
 
     let out = run.assert_ok();
-    assert!(!out.is_revert(), "decompress raw-21 must not revert");
+    assert!(out.is_success(), "decompress raw-21 must not revert");
     let (a, n) = decode_address_and_uint(run.output());
     assert_eq!(a, addr);
     assert_eq!(n, U256::from(21));

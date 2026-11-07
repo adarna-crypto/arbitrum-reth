@@ -346,7 +346,7 @@ fn multi_gas_constraints_storage_round_trip() {
         .result
         .as_ref()
         .expect("setter should not hard-error");
-    assert!(!out.is_revert(), "setter unexpectedly reverted: {:?}", out);
+    assert!(out.is_success(), "setter unexpectedly reverted: {:?}", out);
 
     let getter = set_run.continue_into(owner_fixture(60), ARBOS_STATE_ADDRESS);
     let run = getter.call(
