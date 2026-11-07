@@ -888,10 +888,13 @@ mod tests {
                 false,
             )),
         ));
-        let expected = format!("sender recovery: {signed:?}");
+        let encoded = signed.encoded_2718();
+        let decoded = ArbTransactionSigned::decode_2718(&mut encoded.as_slice()).unwrap();
+        let rejected = decoded.try_into_recovered().unwrap_err();
+        let expected = format!("sender recovery: {rejected:?}");
         for count in [1, 4] {
             let parsed = (0..count)
-                .map(|_| ParsedTransaction::Signed(signed.encoded_2718()))
+                .map(|_| ParsedTransaction::Signed(encoded.clone()))
                 .collect::<Vec<_>>();
             let prepared = prepare_sequencer_chunk(&parsed, 4663);
             assert_eq!(prepared.len(), count);
