@@ -490,11 +490,7 @@ pub fn reentrant_runtime() -> Vec<u8> {
 
     // mem[0x04..0x24] = address(this)
     out.push(0x30); // ADDRESS
-    out.extend_from_slice(&[0x60, 0x04, 0x52]); // PUSH1 4 MSTORE — overlapping with selector but
-                                                // stylus padding ok... Actually MSTORE writes 32
-                                                // bytes starting at offset 4 so it overwrites bytes
-                                                // 4..36. The address is right-aligned (12
-                                                // zero bytes + 20 addr bytes).
+    out.extend_from_slice(&[0x60, 0x04, 0x52]); // PUSH1 4 MSTORE
 
     // mem[0x24..0x44] = 0x40 (offset)
     out.extend_from_slice(&[0x60, 0x40]); // PUSH1 0x40

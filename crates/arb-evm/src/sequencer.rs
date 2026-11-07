@@ -9,7 +9,7 @@
 
 use std::{fmt::Display, sync::LazyLock, time::Duration};
 
-use alloy_consensus::{crypto::RecoveryError, transaction::Recovered, Header};
+use alloy_consensus::{transaction::Recovered, Header};
 use alloy_eips::eip2718::Decodable2718;
 use alloy_evm::{
     block::{BlockExecutor, BlockExecutorFactory},
@@ -147,7 +147,7 @@ enum SequencerPreparationError {
     #[error("parsed transaction has no signed envelope")]
     MissingSignedEnvelope,
     #[error("sender recovery: {0:?}")]
-    SenderRecovery(#[from] RecoveryError),
+    SenderRecovery(Box<ArbTransactionSigned>),
 }
 
 type PreparedSequencerTransaction = Option<
@@ -203,7 +203,9 @@ fn prepare_sequencer_chunk(
                 .clone()
                 .try_into_recovered()
                 .map(|recovered| (signed, recovered))
-                .map_err(SequencerPreparationError::SenderRecovery),
+                .map_err(|transaction| {
+                    SequencerPreparationError::SenderRecovery(Box::new(transaction))
+                }),
         )
     };
 
@@ -876,6 +878,33 @@ mod tests {
     use arbos::{arbos_state::initialize::bootstrap, burn::SystemBurner};
     use reth_revm::state::AccountInfo;
     use std::sync::Arc;
+
+    #[test]
+    fn prepare_sequencer_chunk_preserves_recovery_failure_diagnostics() {
+        let signed = ArbTransactionSigned::from_envelope(EthereumTxEnvelope::Eip1559(
+            TxEip1559::default().into_signed(alloy_primitives::Signature::new(
+                U256::ZERO,
+                U256::ZERO,
+                false,
+            )),
+        ));
+        let expected = format!("sender recovery: {signed:?}");
+        for count in [1, 4] {
+            let parsed = (0..count)
+                .map(|_| ParsedTransaction::Signed(signed.encoded_2718()))
+                .collect::<Vec<_>>();
+            let prepared = prepare_sequencer_chunk(&parsed, 4663);
+            assert_eq!(prepared.len(), count);
+            for result in prepared {
+                let error = result.expect("signed transaction is prepared").unwrap_err();
+                assert!(matches!(
+                    error,
+                    SequencerPreparationError::SenderRecovery(_)
+                ));
+                assert_eq!(error.to_string(), expected);
+            }
+        }
+    }
 
     #[test]
     fn rejects_a_non_contiguous_sequence_before_touching_the_database() {
