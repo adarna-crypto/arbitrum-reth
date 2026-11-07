@@ -1,6 +1,6 @@
 //! Per-selector gas pins for ArbOwner (0x70).
 //!
-//! ArbOwner is owner-gated: every selector first runs `verify_owner`, which
+//! ArbOwner is owner-gated: every selector first runs `is_owner`, which
 //! reads the chain_owners membership for `caller` (2 SLOAD = 1600). After
 //! that the dispatcher resets the per-call gas accumulator and runs the
 //! selector body. The dispatcher then writes `gas_used = 0` into the output
@@ -50,17 +50,15 @@ fn fixture(v: u64) -> PrecompileTest {
     )
 }
 
-// ── Owner-gating: caller not in chain_owners reverts ────────────────
-
 #[test]
-fn caller_not_owner_returns_revert() {
+fn caller_not_owner_returns_exceptional_halt() {
     let run = PrecompileTest::new()
         .arbos_version(30)
         .caller(INTRUDER)
         .arbos_state()
         .gas(50_000)
         .call(arbowner, &calldata("getNetworkFeeAccount()", &[]));
-    assert!(run.assert_ok().is_revert());
+    assert!(run.assert_ok().is_halt());
 }
 
 // ── Body returns gas, dispatcher overrides to 0 ─────────────────────

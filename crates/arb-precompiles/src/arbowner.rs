@@ -12,7 +12,10 @@ use arbos::{
         StylusParams, COST_SCALAR_PERCENT, MIN_CACHED_GAS_UNITS, MIN_INIT_GAS_UNITS,
     },
 };
-use revm::{precompile::PrecompileId, primitives::Log};
+use revm::{
+    precompile::{PrecompileHalt, PrecompileId},
+    primitives::Log,
+};
 use std::sync::Arc;
 
 use crate::{
@@ -42,9 +45,7 @@ pub fn create_arbowner_precompile(ctx: Arc<ArbPrecompileCtx>) -> DynPrecompile {
 }
 
 fn handler(mut input: PrecompileInput<'_>, ctx: &ArbPrecompileCtx) -> PrecompileResult {
-    // Access-controlled methods report zero gas at the receipt; the per-tx
-    // multi-gas accumulator must also reflect that so they cannot escalate the
-    // v60 backlog. Snapshot here and restore on every return path.
+    // Authorized owner calls must not escalate the multi-gas backlog.
     let mg_snapshot = ctx.snapshot_precompile_multi_gas();
     let mut gas_used = 0u64;
     let gas_limit = input.gas;
@@ -93,9 +94,20 @@ fn handler(mut input: PrecompileInput<'_>, ctx: &ArbPrecompileCtx) -> Precompile
         return r;
     }
 
-    if let Err(e) = verify_owner(&mut input, &mut gas_used, ctx) {
-        ctx.restore_precompile_multi_gas(mg_snapshot);
-        return Err(e);
+    match is_owner(&mut input, &mut gas_used, ctx) {
+        Ok(true) => {}
+        Ok(false) => {
+            ctx.restore_precompile_multi_gas(mg_snapshot);
+            // Nitro returns an exceptional error here, so the EVM consumes all remaining gas.
+            return Ok(revm::precompile::PrecompileOutput::halt(
+                PrecompileHalt::other_static("unauthorized caller to access-controlled method"),
+                input.reservoir,
+            ));
+        }
+        Err(error) => {
+            ctx.restore_precompile_multi_gas(mg_snapshot);
+            return Err(error);
+        }
     }
 
     let call = match IArbOwner::ArbOwnerCalls::abi_decode(data) {
@@ -558,11 +570,11 @@ fn handler(mut input: PrecompileInput<'_>, ctx: &ArbPrecompileCtx) -> Precompile
 
 // Owner verification
 
-fn verify_owner(
+fn is_owner(
     input: &mut PrecompileInput<'_>,
     gas_used: &mut u64,
     ctx: &ArbPrecompileCtx,
-) -> Result<(), ArbPrecompileError> {
+) -> Result<bool, ArbPrecompileError> {
     let caller = input.caller;
     load_arbos(input)?;
 
@@ -576,10 +588,7 @@ fn verify_owner(
         .is_member(internals, caller)
         .map_err(ArbPrecompileError::fatal)?;
     crate::charge_precompile_gas(gas_used, 2 * SLOAD_GAS);
-    if !is_owner {
-        return Err(ArbPrecompileError::empty_revert(*gas_used));
-    }
-    Ok(())
+    Ok(is_owner)
 }
 
 // Storage helpers

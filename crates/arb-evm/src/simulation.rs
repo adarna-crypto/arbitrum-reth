@@ -1205,6 +1205,57 @@ mod tests {
     }
 
     #[test]
+    fn unauthorized_owner_call_consumes_full_transaction_gas_without_aborting_block() {
+        use alloy_consensus::Transaction as _;
+        use alloy_sol_types::SolCall;
+        let input =
+            arb_precompiles::interfaces::IArbOwner::getNetworkFeeAccountCall {}.abi_encode();
+        for version in [30, 59, 60, 61] {
+            let signed = signed_1559(
+                0,
+                arb_precompiles::ARBOWNER_ADDRESS,
+                U256::ZERO,
+                input.clone().into(),
+            );
+            let gas_limit = signed.gas_limit();
+            let transaction =
+                ArbSimulationTransaction::from_signed(signed.try_into_recovered().unwrap());
+            let mut block = header();
+            block.mix_hash = arbos::header::compute_arbos_mixhash(0, 9, version, false);
+            let output = execute_simulated_transaction(
+                &config(),
+                database_at_version(version),
+                &block,
+                transaction,
+                ArbSimulationProgress::initialized(Some(1_000_000), 7),
+                None,
+                false,
+                ArbSimulationValidation::strict(),
+            )
+            .unwrap();
+            assert!(
+                matches!(output.result, ExecutionResult::Halt { .. }),
+                "version={version} {:?}",
+                output.result
+            );
+            assert_eq!(output.result.tx_gas_used(), gas_limit, "version={version}");
+            assert_eq!(
+                output
+                    .bundle
+                    .state
+                    .get(&SENDER)
+                    .unwrap()
+                    .info
+                    .as_ref()
+                    .unwrap()
+                    .nonce,
+                1
+            );
+            assert_eq!(output.progress.user_txs_processed(), 8);
+        }
+    }
+
+    #[test]
     fn signed_transfer_runs_full_arbos_hooks_and_returns_exact_bundle() {
         let transaction = ArbSimulationTransaction::from_signed(
             signed_1559(0, RECIPIENT, U256::from(123_456u64), Bytes::new())
