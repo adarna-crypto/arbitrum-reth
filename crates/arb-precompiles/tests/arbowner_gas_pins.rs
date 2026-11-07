@@ -1,7 +1,7 @@
 //! Per-selector gas pins for ArbOwner (0x70).
 //!
-//! Authorized owner calls are free; failed authentication halts exceptionally
-//! and preserves its metered storage reads for multi-dimensional gas accounting.
+//! The valid authorized selector calls tested here are free. Failed authentication
+//! halts exceptionally and retains metered storage reads in multi-dimensional gas.
 
 mod common;
 
