@@ -43,14 +43,14 @@ fn delete_propagates_insufficient_balance_as_retryable_error() {
         rs.delete_retryable(
             unsafe { &mut *state_ptr },
             TICKET_ID,
-            |from, _to, amount| {
+            |_backend, from, _to, amount| {
                 Err(BalanceError::InsufficientBalance {
                     account: from,
                     available: U256::ZERO,
                     requested: amount,
                 })
             },
-            |_addr| requested,
+            |_backend, _addr| requested,
         )
     };
 
@@ -67,4 +67,9 @@ fn delete_propagates_insufficient_balance_as_retryable_error() {
         }
         other => panic!("unexpected error variant: {other:?}"),
     }
+    let rs = h.retryable_state();
+    assert!(rs
+        .open_retryable(h.state(), TICKET_ID, 500)
+        .unwrap()
+        .is_some());
 }

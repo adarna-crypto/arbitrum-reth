@@ -339,8 +339,8 @@ pub fn apply_internal_tx_update<D, B: Burner, F, G, C>(
     mut balance_of: G,
 ) -> Result<(), InternalTxDecodeError>
 where
-    F: FnMut(Address, Address, U256) -> Result<(), BalanceError>,
-    G: FnMut(Address) -> U256,
+    F: FnMut(&mut C, Address, Address, U256) -> Result<(), BalanceError>,
+    G: FnMut(&mut C, Address) -> U256,
     C: AccountStateBackend,
 {
     let Some(selector) = data.first_chunk::<4>().copied() else {
@@ -383,8 +383,8 @@ fn apply_start_block<D, B: Burner, F, G, C>(
     balance_of: &mut G,
 ) -> Result<(), InternalTxDecodeError>
 where
-    F: FnMut(Address, Address, U256) -> Result<(), BalanceError>,
-    G: FnMut(Address) -> U256,
+    F: FnMut(&mut C, Address, Address, U256) -> Result<(), BalanceError>,
+    G: FnMut(&mut C, Address) -> U256,
     C: AccountStateBackend,
 {
     let arbos_version = state.arbos_version();
@@ -441,7 +441,7 @@ fn apply_batch_posting_report<D, B: Burner, F, C>(
     transfer_fn: &mut F,
 ) -> Result<(), InternalTxDecodeError>
 where
-    F: FnMut(Address, Address, U256) -> Result<(), BalanceError>,
+    F: FnMut(&mut C, Address, Address, U256) -> Result<(), BalanceError>,
     C: StorageBackend,
 {
     let per_batch_gas = state
@@ -477,7 +477,7 @@ fn apply_batch_posting_report_v2<D, B: Burner, F, C>(
     transfer_fn: &mut F,
 ) -> Result<(), InternalTxDecodeError>
 where
-    F: FnMut(Address, Address, U256) -> Result<(), BalanceError>,
+    F: FnMut(&mut C, Address, Address, U256) -> Result<(), BalanceError>,
     C: StorageBackend,
 {
     let arbos_version = state.arbos_version();

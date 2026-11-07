@@ -160,6 +160,10 @@ impl PrecompileTest {
         self.bytecode_address = t;
         self
     }
+    pub fn bytecode_address(mut self, address: Address) -> Self {
+        self.bytecode_address = address;
+        self
+    }
     pub fn block(mut self, number: u64, timestamp: u64) -> Self {
         self.block_number = number;
         self.block_timestamp = timestamp;
