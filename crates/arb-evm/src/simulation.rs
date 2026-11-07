@@ -1207,15 +1207,14 @@ mod tests {
     #[test]
     fn unauthorized_owner_call_consumes_full_transaction_gas_without_aborting_block() {
         use alloy_consensus::Transaction as _;
-        use alloy_sol_types::SolCall;
-        let input =
-            arb_precompiles::interfaces::IArbOwner::getNetworkFeeAccountCall {}.abi_encode();
+        let selector_hash = keccak256("getNetworkFeeAccount()");
+        let input = Bytes::copy_from_slice(&selector_hash.as_slice()[..4]);
         for version in [30, 59, 60, 61] {
             let signed = signed_1559(
                 0,
                 arb_precompiles::ARBOWNER_ADDRESS,
                 U256::ZERO,
-                input.clone().into(),
+                input.clone(),
             );
             let gas_limit = signed.gas_limit();
             let transaction =
