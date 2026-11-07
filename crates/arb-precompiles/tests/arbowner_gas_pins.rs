@@ -53,17 +53,14 @@ fn fixture(v: u64) -> PrecompileTest {
 // ── Owner-gating: caller not in chain_owners reverts ────────────────
 
 #[test]
-fn caller_not_owner_propagates_revert_err() {
-    // verify_owner returns Err on non-owner — the dispatcher uses `?` so
-    // the error escapes before the post-call wrapper would have converted
-    // it via `gas_check`. The result reaches the caller as Err.
+fn caller_not_owner_returns_revert() {
     let run = PrecompileTest::new()
         .arbos_version(30)
         .caller(INTRUDER)
         .arbos_state()
         .gas(50_000)
         .call(arbowner, &calldata("getNetworkFeeAccount()", &[]));
-    assert!(run.result.is_err());
+    assert!(run.assert_ok().is_revert());
 }
 
 // ── Body returns gas, dispatcher overrides to 0 ─────────────────────
@@ -89,7 +86,7 @@ fn get_infra_fee_account_below_v5_reverts_burning_gas_limit() {
         .gas(50_000)
         .call(arbowner, &calldata("getInfraFeeAccount()", &[]));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 50_000);
 }
 
@@ -242,7 +239,7 @@ fn set_gas_backlog_below_v50_reverts_burning_gas_limit() {
         &calldata("setGasBacklog(uint64)", &[word_u256(U256::from(1u64))]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 50_000);
 }
 

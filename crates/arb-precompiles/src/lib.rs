@@ -84,6 +84,10 @@ pub(crate) type ArbPrecompileResult = Result<RevmPrecompileOutput, ArbPrecompile
 pub(crate) struct ArbPrecompileOutput;
 
 impl ArbPrecompileOutput {
+    #[expect(
+        clippy::new_ret_no_self,
+        reason = "Compatibility constructors return the upstream output type"
+    )]
     pub(crate) fn new(gas_used: u64, bytes: Bytes) -> RevmPrecompileOutput {
         RevmPrecompileOutput::new(gas_used, bytes, 0)
     }
@@ -293,7 +297,7 @@ pub(crate) fn revert_sol_error(
 ) -> PrecompileResult {
     charge_computation(gas_used, ctx, 3 * (payload.len() as u64).div_ceil(32));
     if *gas_used > input_gas {
-        return Err(ArbPrecompileError::OutOfGas.into());
+        return Err(ArbPrecompileError::OutOfGas);
     }
     Ok(PrecompileOutput::new_reverted(*gas_used, payload.into()))
 }

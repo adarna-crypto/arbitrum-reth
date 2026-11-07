@@ -44,7 +44,7 @@ fn get_infra_fee_account_below_v5_reverts_burning_all_gas() {
         .gas(50_000)
         .call(arbownerpublic, &calldata("getInfraFeeAccount()", &[]));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 50_000);
 }
 
@@ -63,7 +63,7 @@ fn get_brotli_compression_level_below_v20_reverts() {
         arbownerpublic,
         &calldata("getBrotliCompressionLevel()", &[]),
     );
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }
 
 #[test]
@@ -205,7 +205,7 @@ fn rectify_chain_owner_below_v11_reverts() {
         &calldata("rectifyChainOwner(address)", &[word_address(target)]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 50_000);
 }
 
@@ -217,7 +217,7 @@ fn rectify_chain_owner_v11_reverts_when_not_member_with_accumulated_gas() {
         &calldata("rectifyChainOwner(address)", &[word_address(target)]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     // OpenArbosState (800) + args copy (3) + the chain-owner membership read
     // (800) that finds the target absent.
     assert_eq!(out.gas_used, 2 * SLOAD + COPY);

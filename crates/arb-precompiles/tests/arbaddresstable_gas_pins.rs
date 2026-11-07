@@ -47,7 +47,7 @@ fn lookup_unknown_reverts_v30_gas_pin() {
         &calldata("lookup(address)", &[word_address(addr)]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 2 * SLOAD + COPY);
 }
 
@@ -60,7 +60,7 @@ fn lookup_index_unknown_reverts_v30_gas_pin() {
         &calldata("lookupIndex(uint256)", &[word_u256(U256::from(0u64))]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 2 * SLOAD + COPY);
 }
 

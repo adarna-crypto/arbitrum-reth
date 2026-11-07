@@ -183,7 +183,7 @@ fn min_init_gas_reverts_pre_charging_fixes() {
         .gas(gas)
         .call(arbwasm, &calldata("minInitGas()", &[]));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     // OpenArbosState SLOAD (800) + warm Params SLOAD (100) = 900.
     assert_eq!(out.gas_used, 900);
 }
@@ -304,7 +304,7 @@ fn codehash_version_reverts_program_not_activated_for_unset_program() {
     let run = test_with(default_params(), ARBOS_V32)
         .call(arbwasm, &calldata("codehashVersion(bytes32)", &[codehash]));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     let sel = alloy_primitives::keccak256(b"ProgramNotActivated()");
     assert_eq!(&out.bytes[..4], &sel[..4]);
     // lookup(1703) + 1-word error(3) = 1706.
@@ -322,7 +322,7 @@ fn codehash_version_reverts_program_needs_upgrade_for_stale_version() {
         .storage(ARBOS_STATE_ADDRESS, program_data_slot(codehash), prog_word);
     let run = test.call(arbwasm, &calldata("codehashVersion(bytes32)", &[codehash]));
     let out = run.assert_ok();
-    assert!(out.reverted, "must revert");
+    assert!(out.is_revert(), "must revert");
     let sel = alloy_primitives::keccak256(b"ProgramNeedsUpgrade(uint16,uint16)");
     assert_eq!(&out.bytes[..4], &sel[..4]);
     let prog_v = U256::from_be_slice(&out.bytes[4..36]);
@@ -345,7 +345,7 @@ fn codehash_version_reverts_program_expired_after_expiry() {
         .storage(ARBOS_STATE_ADDRESS, program_data_slot(codehash), prog_word);
     let run = test.call(arbwasm, &calldata("codehashVersion(bytes32)", &[codehash]));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     let sel = alloy_primitives::keccak256(b"ProgramExpired(uint64)");
     assert_eq!(&out.bytes[..4], &sel[..4]);
     let age = U256::from_be_slice(&out.bytes[4..36]);
@@ -372,7 +372,7 @@ fn codehash_keepalive_reverts_needs_upgrade_before_expired() {
         &calldata("codehashKeepalive(bytes32)", &[codehash]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted, "must revert");
+    assert!(out.is_revert(), "must revert");
     let sel = alloy_primitives::keccak256(b"ProgramNeedsUpgrade(uint16,uint16)");
     assert_eq!(
         &out.bytes[..4],
@@ -401,7 +401,7 @@ fn codehash_keepalive_reverts_needs_upgrade_for_stale_version() {
         &calldata("codehashKeepalive(bytes32)", &[codehash]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     let sel = alloy_primitives::keccak256(b"ProgramNeedsUpgrade(uint16,uint16)");
     assert_eq!(&out.bytes[..4], &sel[..4]);
     assert_eq!(out.gas_used, 1712);
@@ -420,7 +420,7 @@ fn codehash_keepalive_reverts_expired_for_current_version() {
         &calldata("codehashKeepalive(bytes32)", &[codehash]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     let sel = alloy_primitives::keccak256(b"ProgramExpired(uint64)");
     assert_eq!(&out.bytes[..4], &sel[..4]);
     // lookup(1703) + 2-word error(6) = 1709.
@@ -602,7 +602,7 @@ fn codehash_asm_size_revert_charges_canonical_gas() {
     let run = test_with(default_params(), ARBOS_V32)
         .call(arbwasm, &calldata("codehashAsmSize(bytes32)", &[codehash]));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     let sel = alloy_primitives::keccak256(b"ProgramNotActivated()");
     assert_eq!(&out.bytes[..4], &sel[..4]);
     assert_eq!(out.gas_used, 1706);
@@ -625,7 +625,7 @@ fn program_version_revert_charges_canonical_gas() {
             &calldata("programVersion(address)", &[word_address(prog_addr)]),
         );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     let sel = alloy_primitives::keccak256(b"ProgramNotActivated()");
     assert_eq!(&out.bytes[..4], &sel[..4]);
     // Open(800) + argsCost(3) + Params warm(100) + GetCodeHash(2600) + getProgram(800) + result(3)
@@ -728,7 +728,7 @@ fn keepalive_inner_call_with_value_passes() {
     );
 
     let out = run.assert_ok();
-    if out.reverted {
+    if out.is_revert() {
         let sel = &out.bytes[..4];
         let insufficient =
             alloy_primitives::keccak256(b"ProgramInsufficientValue(uint256,uint256)");
@@ -759,7 +759,7 @@ fn keepalive_inner_call_with_zero_value_still_reverts() {
     );
 
     let out = run.assert_ok();
-    assert!(out.reverted, "expected revert with value=0");
+    assert!(out.is_revert(), "expected revert with value=0");
     let sel = alloy_primitives::keccak256(b"ProgramInsufficientValue(uint256,uint256)");
     assert_eq!(
         &out.bytes[..4],
@@ -785,7 +785,7 @@ fn keepalive_inner_call_value_passes_at_arbos_v40() {
     );
 
     let out = run.assert_ok();
-    if out.reverted {
+    if out.is_revert() {
         let sel = &out.bytes[..4];
         let insufficient =
             alloy_primitives::keccak256(b"ProgramInsufficientValue(uint256,uint256)");
@@ -815,7 +815,7 @@ fn keepalive_inner_call_value_passes_at_arbos_v50() {
     );
 
     let out = run.assert_ok();
-    if out.reverted {
+    if out.is_revert() {
         let sel = &out.bytes[..4];
         let insufficient =
             alloy_primitives::keccak256(b"ProgramInsufficientValue(uint256,uint256)");

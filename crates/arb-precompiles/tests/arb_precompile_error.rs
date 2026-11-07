@@ -1,7 +1,7 @@
 use alloy_primitives::Bytes;
 use arb_precompiles::ArbPrecompileError;
 use arb_storage_errors::{DatabaseError, StorageError};
-use revm::precompile::PrecompileError;
+use revm::precompile::{PrecompileError, PrecompileHalt};
 
 #[test]
 fn revert_round_trips_through_revm_mapper() {
@@ -13,8 +13,8 @@ fn revert_round_trips_through_revm_mapper() {
         gas_used: 123,
     };
 
-    let output = err.into_precompile_result(10_000).expect("ok-revert");
-    assert!(output.reverted);
+    let output = err.into_precompile_result(10_000, 0).expect("ok-revert");
+    assert!(output.is_revert());
     assert_eq!(output.gas_used, 123);
     let bytes = output.bytes.as_ref();
     assert_eq!(&bytes[..4], &selector);
@@ -28,15 +28,20 @@ fn revert_caps_gas_used_at_gas_limit() {
         data: Bytes::new(),
         gas_used: 5_000,
     };
-    let output = err.into_precompile_result(1_000).expect("ok-revert");
-    assert!(output.reverted);
+    let output = err.into_precompile_result(1_000, 0).expect("ok-revert");
+    assert!(output.is_revert());
     assert_eq!(output.gas_used, 1_000);
 }
 
 #[test]
 fn out_of_gas_maps_to_revm_out_of_gas() {
-    let revm_err: PrecompileError = ArbPrecompileError::OutOfGas.into();
-    assert!(matches!(revm_err, PrecompileError::OutOfGas));
+    let output = ArbPrecompileError::OutOfGas
+        .into_precompile_result(1_000, 0)
+        .expect("non-fatal halt");
+    assert!(matches!(
+        output.halt_reason(),
+        Some(PrecompileHalt::OutOfGas)
+    ));
 }
 
 #[test]
@@ -49,7 +54,9 @@ fn fatal_propagates_source_via_display() {
     let display = format!("{err}");
     assert!(display.contains("disk on fire: hot"));
 
-    let revm_err: PrecompileError = err.into();
+    let revm_err = err
+        .into_precompile_result(1_000, 0)
+        .expect_err("fatal output");
     match revm_err {
         PrecompileError::Fatal(msg) => assert!(msg.contains("disk on fire: hot")),
         other => panic!("expected Fatal, got {other:?}"),

@@ -103,6 +103,7 @@ impl InProcessRunner {
             tx_count_hint: Some(block.txs.len()),
             parent_hash: B256::ZERO,
             parent_beacon_block_root: None,
+            slot_number: None,
             ommers: &[],
             withdrawals: None,
             extra_data: vec![0u8; 32].into(),
@@ -127,10 +128,8 @@ impl InProcessRunner {
                     if result.result.result.is_success() {
                         success_count += 1;
                     }
-                    gas_used = gas_used.saturating_add(result.result.result.gas_used());
-                    executor
-                        .commit_transaction(result)
-                        .map_err(|e| eyre::eyre!("commit: {e:?}"))?;
+                    gas_used = gas_used.saturating_add(result.result.result.tx_gas_used());
+                    executor.commit_transaction(result);
                 }
                 Err(e) if !self.config.abort_on_block_error => {
                     tracing::trace!(?e, "tx rejected");

@@ -2,7 +2,7 @@ use alloy_eips::eip4895::Withdrawal;
 use alloy_primitives::{address, Bytes, B256};
 use alloy_rpc_types_engine::PayloadAttributes as AlloyPayloadAttributes;
 use arb_payload::{arb_payload_id, ArbPayloadAttributes, ArbPayloadBuilderAttributes};
-use reth_payload_primitives::{PayloadAttributes, PayloadBuilderAttributes};
+use reth_payload_primitives::PayloadAttributes;
 
 fn base_attrs() -> ArbPayloadAttributes {
     ArbPayloadAttributes {
@@ -12,6 +12,8 @@ fn base_attrs() -> ArbPayloadAttributes {
             suggested_fee_recipient: address!("1111111111111111111111111111111111111111"),
             withdrawals: None,
             parent_beacon_block_root: None,
+            slot_number: None,
+            target_gas_limit: None,
         },
         transactions: None,
         no_tx_pool: false,

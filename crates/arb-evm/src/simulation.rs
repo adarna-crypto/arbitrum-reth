@@ -964,8 +964,10 @@ mod tests {
     }
 
     fn config() -> ArbEvmConfig<ChainSpec> {
-        let mut chain_spec = ChainSpec::default();
-        chain_spec.chain = reth_chainspec::Chain::from(CHAIN_ID);
+        let chain_spec = ChainSpec {
+            chain: reth_chainspec::Chain::from(CHAIN_ID),
+            ..Default::default()
+        };
         ArbEvmConfig::new(Arc::new(chain_spec))
     }
 

@@ -259,9 +259,8 @@ impl<T: alloy_eips::eip7594::Encodable7594>
             alloy_consensus::EthereumTypedTransaction<alloy_consensus::TxEip4844Variant<T>>,
         >,
     ) -> Self {
-        let envelope: alloy_consensus::EthereumTxEnvelope<
-            alloy_consensus::TxEip4844Variant<T>,
-        > = signed.into();
+        let envelope: alloy_consensus::EthereumTxEnvelope<alloy_consensus::TxEip4844Variant<T>> =
+            signed.into();
         Self::from_envelope(envelope.into())
     }
 }

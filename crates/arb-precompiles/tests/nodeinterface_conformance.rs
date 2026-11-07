@@ -233,7 +233,7 @@ fn get_l1_confirmations_unknown_block_returns_zero_not_revert() {
     );
     let execution = run.assert_ok();
     assert!(
-        !execution.reverted,
+        !execution.is_revert(),
         "getL1Confirmations must return 0 for unknown blocks, not revert (matches Nitro when batch fetcher is nil)"
     );
     assert_eq!(decode_u256(run.output()), U256::ZERO);
@@ -258,7 +258,7 @@ fn find_batch_containing_block_without_batch_data_returns_zero() {
     );
     let execution = run.assert_ok();
     assert!(
-        !execution.reverted,
+        !execution.is_revert(),
         "findBatchContainingBlock must return 0, not revert, when no batch data is available"
     );
     assert_eq!(decode_u256(run.output()), U256::ZERO);
@@ -322,7 +322,7 @@ fn legacy_lookup_message_batch_proof_returns_empty_not_revert() {
     );
     let execution = run.assert_ok();
     assert!(
-        !execution.reverted,
+        !execution.is_revert(),
         "legacy lookup is not used post-Nitro; must return empty, not revert"
     );
 }
@@ -338,7 +338,7 @@ fn unknown_selector_reverts() {
         .arbos_version(30)
         .arbos_state()
         .call(nodeinterface, &[0xDEu8, 0xAD, 0xBE, 0xEF].into());
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }
 
 #[test]
@@ -347,7 +347,7 @@ fn empty_calldata_reverts() {
         .arbos_version(30)
         .arbos_state()
         .call(nodeinterface, &[].into());
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }
 
 #[test]
@@ -357,5 +357,5 @@ fn block_l1_num_short_input_reverts() {
         // selector + only 8 bytes instead of required 32
         &[0x6fu8, 0x27, 0x5e, 0xf2, 0, 0, 0, 0, 0, 0, 0, 1].into(),
     );
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }

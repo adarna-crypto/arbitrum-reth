@@ -26,7 +26,7 @@ fn below_v41_mint_returns_noop_zero_gas() {
         &calldata("mintNativeToken(uint256)", &[word_u256(U256::from(1u64))]),
     );
     let out = run.assert_ok();
-    assert!(!out.reverted);
+    assert!(!out.is_revert());
     assert_eq!(out.gas_used, 0);
 }
 
@@ -38,7 +38,7 @@ fn mint_unauthorized_burns_all_gas_v41() {
         &calldata("mintNativeToken(uint256)", &[word_u256(U256::from(1u64))]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 50_000);
 }
 
@@ -49,7 +49,7 @@ fn burn_unauthorized_burns_all_gas_v41() {
         &calldata("burnNativeToken(uint256)", &[word_u256(U256::from(1u64))]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 50_000);
 }
 
@@ -60,6 +60,6 @@ fn invalid_calldata_burns_all_gas_v41() {
         &alloy_primitives::Bytes::from(vec![0xde, 0xad, 0xbe, 0xef]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 50_000);
 }

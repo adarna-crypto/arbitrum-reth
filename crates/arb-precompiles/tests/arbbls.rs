@@ -9,5 +9,5 @@ fn arbbls_has_no_methods() {
         .arbos_version(30)
         .arbos_state()
         .call(|_| create_arbbls_precompile(), &calldata("anything()", &[]));
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }

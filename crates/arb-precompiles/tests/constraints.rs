@@ -180,12 +180,12 @@ fn fail_to_set_invalid_constraints() {
     // Zero target.
     let run = owner_fixture(50).call(arbowner, &set_gas_pricing_calldata(&[[0, 17, 1000]]));
     let out = run.result.as_ref().expect("should return Ok(reverted)");
-    assert!(out.reverted, "zero target should revert");
+    assert!(out.is_revert(), "zero target should revert");
 
     // Zero adjustment window.
     let run = owner_fixture(50).call(arbowner, &set_gas_pricing_calldata(&[[10_000_000, 0, 0]]));
     let out = run.result.as_ref().expect("should return Ok(reverted)");
-    assert!(out.reverted, "zero adjustment window should revert");
+    assert!(out.is_revert(), "zero adjustment window should revert");
 }
 
 /// Setter/getter round-trip for the legacy gas backlog field.
@@ -285,7 +285,7 @@ fn multi_gas_constraints_cant_exceed_limit() {
     );
     let out = run.result.as_ref().expect("should return Ok(reverted)");
     assert!(
-        out.reverted,
+        out.is_revert(),
         "backlog that exceeds MaxPricingExponentBips must revert"
     );
 }
@@ -346,7 +346,7 @@ fn multi_gas_constraints_storage_round_trip() {
         .result
         .as_ref()
         .expect("setter should not hard-error");
-    assert!(!out.reverted, "setter unexpectedly reverted: {:?}", out);
+    assert!(!out.is_revert(), "setter unexpectedly reverted: {:?}", out);
 
     let getter = set_run.continue_into(owner_fixture(60), ARBOS_STATE_ADDRESS);
     let run = getter.call(

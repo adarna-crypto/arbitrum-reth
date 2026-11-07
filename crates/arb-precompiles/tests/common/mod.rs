@@ -310,6 +310,7 @@ impl PrecompileTest {
             precompile.call(PrecompileInput {
                 data: input,
                 gas: self.gas_limit,
+                reservoir: 0,
                 caller: self.caller,
                 value: self.value,
                 is_static: self.is_static,

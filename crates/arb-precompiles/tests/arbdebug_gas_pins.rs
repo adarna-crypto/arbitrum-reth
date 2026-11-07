@@ -32,7 +32,7 @@ fn fixture(allow_debug: bool) -> PrecompileTest {
 fn become_chain_owner_disallowed_burns_all_gas_v30() {
     let run = fixture(false).call(arbdebug, &calldata("becomeChainOwner()", &[]));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, GAS_LIMIT);
 }
 
@@ -40,7 +40,7 @@ fn become_chain_owner_disallowed_burns_all_gas_v30() {
 fn events_view_disallowed_burns_all_gas_v30() {
     let run = fixture(false).call(arbdebug, &calldata("eventsView()", &[]));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, GAS_LIMIT);
 }
 
@@ -69,7 +69,7 @@ fn events_view_allowed_gas_pin_v30() {
 fn legacy_error_allowed_reverts_v30() {
     let run = fixture(true).call(arbdebug, &calldata("legacyError()", &[]));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 0);
 }
 
@@ -80,6 +80,6 @@ fn custom_revert_allowed_gas_pin_v30() {
         &calldata("customRevert(uint64)", &[word_u256(U256::from(42u64))]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 24);
 }

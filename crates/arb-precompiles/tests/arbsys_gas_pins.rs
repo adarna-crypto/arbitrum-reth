@@ -123,7 +123,7 @@ fn arb_block_hash_future_block_revert_arbos11_gas_pin() {
         &calldata("arbBlockHash(uint256)", &[word_u256(U256::from(100))]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     // STORAGE_READ_COST(800) + argsCost(1 word) + resultCost(3 words) = 812
     assert_eq!(out.gas_used, SLOAD + COPY + 3 * COPY);
 }
@@ -206,16 +206,19 @@ fn send_tx_to_l1_with_calldata_v30_gas_pin() {
 // allowing logs and writes from a call that should have OOG'd.
 #[test]
 fn handler_charging_past_gas_limit_returns_out_of_gas() {
-    use revm::precompile::PrecompileError;
+    use revm::precompile::PrecompileHalt;
     let run = fixture(ARBOS_V30)
         .gas(100)
         .call(arbsys, &calldata("arbBlockNumber()", &[]));
-    assert!(matches!(run.assert_err(), PrecompileError::OutOfGas));
+    assert!(matches!(
+        run.assert_ok().halt_reason(),
+        Some(PrecompileHalt::OutOfGas)
+    ));
 }
 
 #[test]
 fn send_tx_to_l1_with_insufficient_gas_returns_out_of_gas() {
-    use revm::precompile::PrecompileError;
+    use revm::precompile::PrecompileHalt;
     let dest: Address = address!("000000000000000000000000000000000000cccc");
     let mut buf = Vec::with_capacity(4 + 3 * 32);
     buf.extend_from_slice(&common::selector("sendTxToL1(address,bytes)"));
@@ -228,5 +231,8 @@ fn send_tx_to_l1_with_insufficient_gas_returns_out_of_gas() {
         .block_timestamp(1_700_000_000)
         .gas(20_000)
         .call(arbsys, &alloy_primitives::Bytes::from(buf));
-    assert!(matches!(run.assert_err(), PrecompileError::OutOfGas));
+    assert!(matches!(
+        run.assert_ok().halt_reason(),
+        Some(PrecompileHalt::OutOfGas)
+    ));
 }

@@ -64,7 +64,7 @@ fn get_fee_collector_unknown_poster_v30_revert_gas_pin() {
         &calldata("getFeeCollector(address)", &[word_address(unknown_poster)]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     // OpenArbosState (800) + args copy (3) + the poster-table read (800) that
     // finds the poster absent.
     assert_eq!(out.gas_used, 1603);

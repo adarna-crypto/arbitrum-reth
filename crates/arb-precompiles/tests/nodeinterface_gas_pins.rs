@@ -108,7 +108,7 @@ fn l2_block_range_for_l1_reverts_with_init_gas_v30() {
         &calldata("l2BlockRangeForL1(uint64)", &[word_u256(U256::from(1u64))]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     // init_precompile_gas: 800 + 1 word args = 803.
     assert_eq!(out.gas_used, SLOAD + COPY);
 }
@@ -131,7 +131,7 @@ fn estimate_retryable_ticket_reverts_with_init_gas_v30() {
         .gas(50_000)
         .call(nodeinterface, &alloy_primitives::Bytes::from(buf));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     // init_precompile_gas: 800 + 8 words * 3 = 824.
     assert_eq!(out.gas_used, SLOAD + 8 * COPY);
 }
@@ -146,7 +146,7 @@ fn construct_outbox_proof_reverts_with_init_gas_v30() {
         ),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     // init_precompile_gas: 800 + 2 words * 3 = 806.
     assert_eq!(out.gas_used, SLOAD + 2 * COPY);
 }

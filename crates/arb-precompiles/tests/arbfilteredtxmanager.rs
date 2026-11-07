@@ -77,7 +77,7 @@ fn add_rejects_non_filterer_caller() {
             arbfilteredtxmanager,
             &calldata("addFilteredTransaction(bytes32)", &[tx]),
         );
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }
 
 #[test]

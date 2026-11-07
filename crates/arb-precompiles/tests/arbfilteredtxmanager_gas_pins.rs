@@ -36,7 +36,7 @@ fn below_v60_dispatch_returns_noop_zero_gas() {
         &b32_calldata("isTransactionFiltered(bytes32)", B256::ZERO),
     );
     let out = run.assert_ok();
-    assert!(!out.reverted);
+    assert!(!out.is_revert());
     assert_eq!(out.gas_used, 0);
 }
 
@@ -49,7 +49,7 @@ fn is_transaction_filtered_non_filterer_caller_pays_wrapper_v60_gas_pin() {
         &b32_calldata("isTransactionFiltered(bytes32)", B256::ZERO),
     );
     let out = run.assert_ok();
-    assert!(!out.reverted);
+    assert!(!out.is_revert());
     assert_eq!(out.gas_used, 2 * SLOAD);
 }
 
@@ -62,7 +62,7 @@ fn add_filtered_transaction_non_filterer_caller_v60_gas_pin() {
         &b32_calldata("addFilteredTransaction(bytes32)", B256::ZERO),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 2 * SLOAD);
 }
 
@@ -73,7 +73,7 @@ fn delete_filtered_transaction_non_filterer_caller_v60_gas_pin() {
         &b32_calldata("deleteFilteredTransaction(bytes32)", B256::ZERO),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 2 * SLOAD);
 }
 
@@ -84,7 +84,7 @@ fn invalid_calldata_reverts_with_wrapper_gas_v60() {
         &alloy_primitives::Bytes::from(vec![0xde, 0xad, 0xbe, 0xef]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     // The free-access wrapper charges only its own reads (OpenArbosState +
     // membership = 1600) and discards the inner precompile's gas, so a bad
     // selector reverts with 1600 rather than burning all gas.

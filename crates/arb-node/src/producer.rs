@@ -1407,7 +1407,7 @@ where
             .live_ipc
             .as_ref()
             .filter(|publisher| publisher.should_capture())
-            .map(|_| {
+            .and_then(|_| {
                 let started = std::time::Instant::now();
                 let result = encode_live_canonical_update(
                     sealed.header(),
@@ -1433,8 +1433,7 @@ where
                         None
                     }
                 }
-            })
-            .flatten();
+            });
 
         // Buffer block in memory for batched persistence.
         {
@@ -1446,9 +1445,10 @@ where
             // Storage V2 persists transaction senders in a dedicated static-file segment.
             // Every transaction in this block has already been recovered for execution, so this
             // normally reads the warmed sender cache. Keeping the complete sender vector on the
-            // executed block is required for `save_blocks(Full)` to advance that segment in lockstep
-            // with transactions; an empty vector advances only its block index and makes startup
-            // consistency healing unwind the otherwise-durable blocks.
+            // executed block is required for `save_blocks(Full)` to advance that segment in
+            // lockstep with transactions; an empty vector advances only its block index
+            // and makes startup consistency healing unwind the otherwise-durable
+            // blocks.
             let recovered = Arc::new(RecoveredBlock::try_recover_sealed(sealed.clone()).map_err(
                 |e| {
                     BlockProducerError::Execution(format!(
@@ -1952,7 +1952,7 @@ fn encode_live_canonical_update(
             slots,
         });
     }
-    state_changeset.sort_unstable_by(|a, b| a.address.cmp(&b.address));
+    state_changeset.sort_unstable_by_key(|account| account.address);
 
     let update = LiveCanonicalUpdateFrame {
         block: LiveCanonicalBlockFrame {
@@ -1992,7 +1992,7 @@ fn canonicalize_live_slots(
     if matches!(account_change, LiveAccountInfoChangeFrame::Deleted) {
         slots.clear();
     } else {
-        slots.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+        slots.sort_unstable_by_key(|slot| slot.0);
     }
 }
 
@@ -2074,7 +2074,7 @@ fn delete_empty_accounts(
 
 /// Remove unchanged storage slots from the bundle.
 fn filter_unchanged_storage(bundle: &mut BundleState) {
-    for (_addr, account) in bundle.state.iter_mut() {
+    for account in bundle.state.values_mut() {
         account
             .storage
             .retain(|_key, slot| slot.present_value != slot.previous_or_original_value);

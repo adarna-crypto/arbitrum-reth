@@ -44,6 +44,10 @@ pub enum LiveIpcKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "Keep canonical frames inline without an allocation per IPC update"
+)]
 pub enum LiveIpcMessage {
     CanonicalUpdate(LiveCanonicalUpdateFrame),
     Hello(LiveHelloFrame),

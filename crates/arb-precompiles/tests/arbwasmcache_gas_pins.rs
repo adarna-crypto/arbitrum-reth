@@ -36,7 +36,7 @@ fn below_stylus_returns_noop_zero_gas() {
         .gas(50_000)
         .call(arbwasmcache, &calldata("allCacheManagers()", &[]));
     let out = run.assert_ok();
-    assert!(!out.reverted);
+    assert!(!out.is_revert());
     assert_eq!(out.gas_used, 0);
 }
 
@@ -81,7 +81,7 @@ fn cache_codehash_unauthorized_burns_all_v30() {
         &codehash_calldata("cacheCodehash(bytes32)", hash),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 50_000);
 }
 
@@ -94,7 +94,7 @@ fn cache_codehash_above_v30_reverts_with_full_gas() {
         &codehash_calldata("cacheCodehash(bytes32)", hash),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 50_000);
 }
 
@@ -107,7 +107,7 @@ fn cache_program_below_v31_reverts_with_full_gas() {
         &calldata("cacheProgram(address)", &[word_address(addr)]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 50_000);
 }
 
@@ -119,7 +119,7 @@ fn cache_program_unauthorized_burns_all_v31() {
         &calldata("cacheProgram(address)", &[word_address(addr)]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 50_000);
 }
 
@@ -131,6 +131,6 @@ fn evict_codehash_unauthorized_burns_all_v30() {
         &codehash_calldata("evictCodehash(bytes32)", hash),
     );
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, 50_000);
 }

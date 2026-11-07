@@ -42,5 +42,5 @@ fn get_reverts_table_empty() {
             &[word_address(probe), word_u256(U256::ZERO)],
         ),
     );
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }

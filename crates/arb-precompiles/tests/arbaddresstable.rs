@@ -91,7 +91,7 @@ fn lookup_unregistered_address_reverts() {
         &calldata("lookup(address)", &[word_address(addr)]),
     );
     let out = run.assert_ok();
-    assert!(out.reverted, "lookup of unregistered must revert");
+    assert!(out.is_revert(), "lookup of unregistered must revert");
 }
 
 #[test]
@@ -104,7 +104,7 @@ fn lookup_index_zero_in_empty_table_reverts() {
         ),
     );
     let out = run.assert_ok();
-    assert!(out.reverted, "lookupIndex into empty table must revert");
+    assert!(out.is_revert(), "lookupIndex into empty table must revert");
 }
 
 #[test]
@@ -199,7 +199,7 @@ fn decompress_short_index_returns_registered_address() {
         .call(arbaddresstable, &data.into());
 
     let out = run.assert_ok();
-    assert!(!out.reverted, "decompress short-index must not revert");
+    assert!(!out.is_revert(), "decompress short-index must not revert");
     let (a, n) = decode_address_and_uint(run.output());
     assert_eq!(a, addr);
     assert_eq!(n, U256::from(1));
@@ -226,7 +226,7 @@ fn decompress_raw_21_byte_address_returns_raw() {
         .call(arbaddresstable, &data.into());
 
     let out = run.assert_ok();
-    assert!(!out.reverted, "decompress raw-21 must not revert");
+    assert!(!out.is_revert(), "decompress raw-21 must not revert");
     let (a, n) = decode_address_and_uint(run.output());
     assert_eq!(a, addr);
     assert_eq!(n, U256::from(21));

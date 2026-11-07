@@ -31,6 +31,6 @@ fn get_stats_v30_gas_pin() {
 fn invalid_selector_v30_burns_all_gas() {
     let run = fixture().call(arbstatistics, &Bytes::from(vec![0xde, 0xad, 0xbe, 0xef]));
     let out = run.assert_ok();
-    assert!(out.reverted);
+    assert!(out.is_revert());
     assert_eq!(out.gas_used, GAS_LIMIT);
 }

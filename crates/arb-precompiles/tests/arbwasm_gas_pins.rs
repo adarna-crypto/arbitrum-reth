@@ -110,7 +110,7 @@ fn codehash_version_unknown_v30_gas_pin() {
         &calldata("codehashVersion(bytes32)", &[word_u256(codehash.into())]),
     );
     // No active program → ProgramNotActivated revert at LOOKUP_GAS.
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }
 
 #[test]
@@ -120,5 +120,5 @@ fn codehash_asm_size_unknown_v30_gas_pin() {
         arbwasm,
         &calldata("codehashAsmSize(bytes32)", &[word_u256(codehash.into())]),
     );
-    assert!(run.assert_ok().reverted);
+    assert!(run.assert_ok().is_revert());
 }

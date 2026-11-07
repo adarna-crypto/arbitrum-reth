@@ -58,7 +58,7 @@ fn handler(mut input: PrecompileInput<'_>, ctx: &ArbPrecompileCtx) -> Precompile
         ArbDebugCalls::legacyError(_) => {
             gas_used = 0;
             crate::init_precompile_gas_pure(&mut gas_used, ctx, input_len);
-            Err(ArbPrecompileError::empty_revert(gas_used).into())
+            Err(ArbPrecompileError::empty_revert(gas_used))
         }
         ArbDebugCalls::panic(_) => {
             if let Some(r) = crate::check_method_version(
@@ -161,7 +161,7 @@ fn handle_events_view(
     // v < 11: view-method log writes are permitted; emit and succeed.
     // v >= 11: framework rejects with ErrWriteProtection.
     if ctx.block.arbos_version >= arb_chainspec::arbos_version::ARBOS_VERSION_11 {
-        return Err(ArbPrecompileError::empty_revert(*gas_used).into());
+        return Err(ArbPrecompileError::empty_revert(*gas_used));
     }
 
     let gas_limit = input.gas;
@@ -234,12 +234,12 @@ fn handle_overwrite_contract_code(
             .code()
             .map(|bc| bc.original_byte_slice().to_vec())
             .unwrap_or_default(),
-        Err(e) => return Err(ArbPrecompileError::fatal(e).into()),
+        Err(e) => return Err(ArbPrecompileError::fatal(e)),
     };
 
     let bytecode = revm::bytecode::Bytecode::new_raw(new_code.clone());
     if let Err(e) = input.internals_mut().set_code(target, bytecode) {
-        return Err(ArbPrecompileError::fatal(e).into());
+        return Err(ArbPrecompileError::fatal(e));
     }
 
     // ABI-encode `bytes memory oldCode`: offset(0x20) | length(N) | data padded.

@@ -99,7 +99,7 @@ fn fits_canonical_budget_and_empties_the_set() {
     let r = run(CANONICAL_BUDGET);
     let out = r.assert_ok();
     assert!(
-        !out.reverted,
+        !out.is_revert(),
         "must succeed within the canonical 20,111-gas budget"
     );
     assert_eq!(
@@ -121,7 +121,7 @@ fn fits_canonical_budget_and_empties_the_set() {
 #[test]
 fn body_gas_threshold_pins_reset_pricing() {
     assert!(
-        !run(REMOVE_GAS).assert_ok().reverted,
+        !run(REMOVE_GAS).assert_ok().is_revert(),
         "succeeds at exactly the billed body gas",
     );
     // One gas short, the access-controlled body overruns its budget: it reverts
@@ -129,6 +129,6 @@ fn body_gas_threshold_pins_reset_pricing() {
     // forwarded gas.
     let short = run(REMOVE_GAS - 1);
     let out = short.assert_ok();
-    assert!(out.reverted, "one gas short reverts");
+    assert!(out.is_revert(), "one gas short reverts");
     assert_eq!(out.gas_used, 0, "the owner is billed zero even over budget");
 }

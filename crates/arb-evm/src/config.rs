@@ -463,18 +463,6 @@ fn arb_cfg_env(
     cfg
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn arb_cfg_env_applies_chain_code_size_limits() {
-        let cfg = arb_cfg_env(4663, SpecId::OSAKA, 61, 98_304, 196_608);
-        assert_eq!(cfg.limit_contract_code_size, Some(98_304));
-        assert_eq!(cfg.limit_contract_initcode_size, Some(196_608));
-    }
-}
-
 /// Extract ArbOS version from header mix_hash (bytes 16-23).
 pub fn arbos_version_from_mix_hash(mix_hash: &B256) -> u64 {
     let mut buf = [0u8; 8];
@@ -487,4 +475,16 @@ pub fn l1_block_number_from_mix_hash(mix_hash: &B256) -> u64 {
     let mut buf = [0u8; 8];
     buf.copy_from_slice(&mix_hash.0[8..16]);
     u64::from_be_bytes(buf)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn arb_cfg_env_applies_chain_code_size_limits() {
+        let cfg = arb_cfg_env(4663, SpecId::OSAKA, 61, 98_304, 196_608);
+        assert_eq!(cfg.limit_contract_code_size, Some(98_304));
+        assert_eq!(cfg.limit_contract_initcode_size, Some(196_608));
+    }
 }
