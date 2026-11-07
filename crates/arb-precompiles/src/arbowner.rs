@@ -12,7 +12,10 @@ use arbos::{
         StylusParams, COST_SCALAR_PERCENT, MIN_CACHED_GAS_UNITS, MIN_INIT_GAS_UNITS,
     },
 };
-use revm::{precompile::PrecompileId, primitives::Log};
+use revm::{
+    precompile::{PrecompileHalt, PrecompileId},
+    primitives::Log,
+};
 use std::sync::Arc;
 
 use crate::{
@@ -42,26 +45,34 @@ pub fn create_arbowner_precompile(ctx: Arc<ArbPrecompileCtx>) -> DynPrecompile {
 }
 
 fn handler(mut input: PrecompileInput<'_>, ctx: &ArbPrecompileCtx) -> PrecompileResult {
-    // Access-controlled methods report zero gas at the receipt; the per-tx
-    // multi-gas accumulator must also reflect that so they cannot escalate the
-    // v60 backlog. Snapshot here and restore on every return path.
+    // Authorized owner calls must not escalate the multi-gas backlog.
     let mg_snapshot = ctx.snapshot_precompile_multi_gas();
     let mut gas_used = 0u64;
     let gas_limit = input.gas;
     let data = input.data;
+    match is_owner(&mut input, &mut gas_used, ctx) {
+        Ok(true) => {}
+        Ok(false) => {
+            // Nitro returns an exceptional error here, so the EVM consumes all remaining gas.
+            return Ok(revm::precompile::PrecompileOutput::halt(
+                PrecompileHalt::other_static("unauthorized caller to access-controlled method"),
+                input.reservoir,
+            ));
+        }
+        Err(error) => return Err(error),
+    }
+
+    ctx.restore_precompile_multi_gas(mg_snapshot);
     if data.len() < 4 {
-        ctx.restore_precompile_multi_gas(mg_snapshot);
         return crate::burn_all_revert(gas_limit);
     }
     let selector: [u8; 4] = [data[0], data[1], data[2], data[3]];
 
     if let Some(r) = crate::reject_nonpayable_value(input.value, data, gas_limit, &[]) {
-        ctx.restore_precompile_multi_gas(mg_snapshot);
         return r;
     }
 
-    // Only the read-only owner queries are allowed under STATICCALL/read-only;
-    // every setter reverts before the owner check.
+    // Only read-only owner queries may be reached through STATICCALL.
     if let Some(r) = crate::reject_static_unless_read(
         input.is_static,
         data,
@@ -78,7 +89,6 @@ fn handler(mut input: PrecompileInput<'_>, ctx: &ArbPrecompileCtx) -> Precompile
             [0xee, 0x95, 0xa8, 0x24], // getInfraFeeAccount()
         ],
     ) {
-        ctx.restore_precompile_multi_gas(mg_snapshot);
         return r;
     }
 
@@ -89,19 +99,12 @@ fn handler(mut input: PrecompileInput<'_>, ctx: &ArbPrecompileCtx) -> Precompile
         gas_limit,
         &[],
     ) {
-        ctx.restore_precompile_multi_gas(mg_snapshot);
         return r;
-    }
-
-    if let Err(e) = verify_owner(&mut input, &mut gas_used, ctx) {
-        ctx.restore_precompile_multi_gas(mg_snapshot);
-        return Err(e);
     }
 
     let call = match IArbOwner::ArbOwnerCalls::abi_decode(data) {
         Ok(c) => c,
         Err(_) => {
-            ctx.restore_precompile_multi_gas(mg_snapshot);
             return crate::burn_all_revert(gas_limit);
         }
     };
@@ -558,27 +561,38 @@ fn handler(mut input: PrecompileInput<'_>, ctx: &ArbPrecompileCtx) -> Precompile
 
 // Owner verification
 
-fn verify_owner(
+fn is_owner(
     input: &mut PrecompileInput<'_>,
     gas_used: &mut u64,
     ctx: &ArbPrecompileCtx,
-) -> Result<(), ArbPrecompileError> {
+) -> Result<bool, ArbPrecompileError> {
     let caller = input.caller;
+    charge_owner_read(gas_used, input.gas, ctx)?;
     load_arbos(input)?;
 
+    let gas_limit = input.gas;
     let internals = input.internals_mut();
     let arb_state = ctx
         .block
         .arbos_state(internals)
         .map_err(ArbPrecompileError::fatal)?;
+    charge_owner_read(gas_used, gas_limit, ctx)?;
     let is_owner = arb_state
         .chain_owners
         .is_member(internals, caller)
         .map_err(ArbPrecompileError::fatal)?;
-    crate::charge_precompile_gas(gas_used, 2 * SLOAD_GAS);
-    if !is_owner {
-        return Err(ArbPrecompileError::empty_revert(*gas_used));
+    Ok(is_owner)
+}
+
+fn charge_owner_read(
+    gas_used: &mut u64,
+    gas_limit: u64,
+    ctx: &ArbPrecompileCtx,
+) -> Result<(), ArbPrecompileError> {
+    if gas_limit.saturating_sub(*gas_used) < SLOAD_GAS {
+        return Err(ArbPrecompileError::OutOfGas);
     }
+    crate::charge_storage_read(gas_used, ctx, SLOAD_GAS);
     Ok(())
 }
 

@@ -56,7 +56,7 @@ fn rejects_caller_not_in_chain_owners() {
         .arbos_state()
         .gas(100_000)
         .call(arbowner, &calldata("getNetworkFeeAccount()", &[]));
-    assert!(run.assert_ok().is_revert());
+    assert!(run.assert_ok().is_halt());
 }
 
 #[test]
